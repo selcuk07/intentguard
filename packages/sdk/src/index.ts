@@ -6,6 +6,6 @@ export {
   createVerifyIntentInstruction,
   createRevokeIntentInstruction,
 } from './instructions';
-// React component available via '@intentguard/sdk/react'
+// React component available via 'intentguard-sdk/react'
 export { IntentGuardButton } from './react';
 export type { IntentGuardButtonProps } from './react';

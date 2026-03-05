@@ -22,7 +22,7 @@ import {
   findIntentCommitPda,
   getIntentCommit,
   INTENT_GUARD_PROGRAM_ID,
-} from '@intentguard/sdk';
+} from 'intentguard-sdk';
 
 const RPC_URL = 'https://api.devnet.solana.com';
 

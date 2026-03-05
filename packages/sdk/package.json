@@ -1,5 +1,5 @@
 {
-  "name": "@intentguard/sdk",
+  "name": "intentguard-sdk",
   "version": "0.1.0",
   "description": "IntentGuard SDK — Solana 2FA for any dApp. Commit-reveal intent verification with device separation.",
   "author": "IntentGuard Contributors",

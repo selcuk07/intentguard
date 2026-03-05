@@ -55,7 +55,7 @@ IntentGuard introduces a commit-reveal pattern with device separation:
 User confirms intent parameters on their mobile app or CLI. The app computes a SHA-256 hash and sends a `commit_intent` transaction to Solana.
 
 ```typescript
-import { computeIntentHash } from '@intentguard/sdk';
+import { computeIntentHash } from 'intentguard-sdk';
 
 // Hash whatever parameters the target dApp needs
 const hash = computeIntentHash([
@@ -238,7 +238,7 @@ cargo update -p proc-macro-crate@3.5.0 --precise 3.2.0
 ## SDK
 
 ```bash
-npm install @intentguard/sdk
+npm install intentguard-sdk
 ```
 
 ```typescript
@@ -248,7 +248,7 @@ import {
   findIntentCommitPda,
   findConfigPda,
   INTENT_GUARD_PROGRAM_ID,
-} from '@intentguard/sdk';
+} from 'intentguard-sdk';
 ```
 
 ## Roadmap

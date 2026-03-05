@@ -117,7 +117,7 @@
 - [ ] Dashboard: real-time stats (commits, verifies, unique users)
 
 ### SDK v1.0
-- [ ] `@intentguard/sdk` on npm
+- [ ] `intentguard-sdk` on npm ✅
 - [ ] `intentguard-cpi` on crates.io
 - [ ] Full API docs (TypeDoc)
 - [ ] Integration examples repo

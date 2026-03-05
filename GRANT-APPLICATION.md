@@ -37,7 +37,7 @@ Mobile (trusted)              Browser (untrusted)
 | On-chain program (Anchor 0.32.1) | ✅ Deployed to devnet |
 | 4 instructions (init, commit, verify, revoke) | ✅ Working |
 | 14 integration tests | ✅ All passing |
-| TypeScript SDK (`@intentguard/sdk`) | ✅ Built (CJS + ESM) |
+| TypeScript SDK (`intentguard-sdk`) | ✅ Built (CJS + ESM) |
 | Instruction builders (no Anchor dep) | ✅ Ready |
 | React `IntentGuardButton` component | ✅ Built |
 | CLI tool | ✅ Tested on devnet |

@@ -1,11 +1,11 @@
-# @intentguard/sdk
+# intentguard-sdk
 
 Solana 2FA SDK — Add cryptographic intent verification to any dApp.
 
 ## Install
 
 ```bash
-npm install @intentguard/sdk @solana/web3.js
+npm install intentguard-sdk @solana/web3.js
 ```
 
 ## Quick Start
@@ -16,7 +16,7 @@ import {
   createCommitIntentInstruction,
   createVerifyIntentInstruction,
   findIntentCommitPda,
-} from '@intentguard/sdk';
+} from 'intentguard-sdk';
 
 // 1. Compute hash from intent parameters
 const hash = computeIntentHash([
@@ -42,7 +42,7 @@ const tx = new Transaction().add(verifyIx).add(yourSwapIx);
 ## React Component
 
 ```tsx
-import { IntentGuardButton } from '@intentguard/sdk/react';
+import { IntentGuardButton } from 'intentguard-sdk/react';
 
 <IntentGuardButton
   userPublicKey={wallet.publicKey}
