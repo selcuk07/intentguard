@@ -1,0 +1,15 @@
+[package]
+name = "intentguard-cpi"
+version = "0.1.0"
+edition = "2021"
+description = "CPI helpers for IntentGuard — Solana 2FA protocol"
+license = "MIT"
+repository = "https://github.com/selcuk07/intentguard"
+homepage = "https://github.com/selcuk07/intentguard"
+keywords = ["solana", "2fa", "intent", "security", "anchor"]
+categories = ["cryptography", "authentication"]
+readme = "README.md"
+
+[dependencies]
+anchor-lang = "0.32.1"
+solana-program = "2.2"
