@@ -132,8 +132,11 @@
 - [ ] Publish audit report
 
 ### Bug Bounty
-- [ ] Immunefi listing
-- [ ] Bounty tiers: Critical ($50K), High ($10K), Medium ($2K)
+- [x] SECURITY.md with full bug bounty policy
+- [x] Immunefi submission document prepared (IMMUNEFI-SUBMISSION.md)
+- [x] Bounty tiers: Critical ($50K), High ($10K), Medium ($2K), Low ($500)
+- [x] Scope defined: on-chain program + SDK + CPI crate
+- [ ] Immunefi listing live (pending submission)
 
 ## Phase 7 — Mainnet + SDK v1.0 (Week 14–16)
 

@@ -115,6 +115,10 @@ await program.methods
 | `commit_intent` | Lock intent hash on-chain (TX1 from trusted device) |
 | `verify_intent` | Verify hash match and close PDA (TX2 from dApp) |
 | `revoke_intent` | Cancel pending intent, refund rent |
+| `pause_protocol` | Admin: block new commits |
+| `unpause_protocol` | Admin: resume commits |
+| `transfer_admin` | Admin: change authority |
+| `update_config` | Admin: tune spam protection |
 
 ### PDA Structure
 
@@ -187,7 +191,7 @@ The only requirement: both the commit side (mobile/CLI) and verify side (browser
 intentguard/
 ├── programs/intent-guard/     # Anchor program
 │   └── src/
-│       ├── lib.rs             # Program entrypoint (4 instructions)
+│       ├── lib.rs             # Program entrypoint (9 instructions)
 │       ├── state.rs           # IntentCommit, GuardConfig
 │       ├── errors.rs          # Error codes
 │       └── instructions/      # Instruction handlers
@@ -197,7 +201,7 @@ intentguard/
 │       ├── pdas.ts            # PDA derivation helpers
 │       └── constants.ts       # Program ID, defaults
 ├── tests/
-│   └── intent-guard.ts        # 14 tests (full coverage)
+│   └── intent-guard.ts        # 29 tests (full coverage)
 ├── Anchor.toml
 └── README.md
 ```
@@ -224,11 +228,14 @@ anchor build -- --features dev-testing
 ### Test
 
 ```bash
-# Run all tests (14 tests)
+# Run all tests (29 tests)
 anchor test
 
 # Skip build if already compiled
 anchor test --skip-build
+
+# Run fuzz tests (requires nightly)
+cd trident-tests && cargo +nightly run --bin fuzz_0
 ```
 
 ### Dependency Pins
@@ -256,17 +263,29 @@ import {
 } from 'intentguard-sdk';
 ```
 
+## Security
+
+IntentGuard takes security seriously. See [SECURITY.md](SECURITY.md) for our bug bounty policy.
+
+- **Threat model:** 12 attack vectors analyzed — [THREAT-MODEL.md](THREAT-MODEL.md)
+- **Fuzzing:** Trident — 8 flows, 1M+ instructions, 0 violations
+- **Tests:** 29 integration tests covering all instructions and attack vectors
+- **Bug bounty:** Up to $50K for critical vulnerabilities
+
+Report vulnerabilities to **security@intentguard.dev**.
+
 ## Roadmap
 
-- [x] On-chain program (commit, verify, revoke)
-- [x] TypeScript SDK
-- [x] Test suite (14 tests)
-- [ ] Mobile app (React Native — QR scan + confirm)
-- [ ] Browser extension (popup confirmation)
-- [ ] CPI integration examples (Jupiter, Raydium)
-- [ ] CLI commit tool
-- [ ] Devnet deployment
-- [ ] Audit
+- [x] On-chain program (9 instructions)
+- [x] TypeScript SDK (npm: `intentguard-sdk`)
+- [x] Rust CPI crate (crates.io: `intentguard-cpi`)
+- [x] Test suite (29 tests + Trident fuzzing)
+- [x] Mobile app MVP (React Native)
+- [x] Browser extension MVP (Chrome)
+- [x] CLI commit tool
+- [x] Devnet deployment
+- [x] Bug bounty program
+- [ ] External audit
 - [ ] Mainnet launch
 
 ## Why "2FA"?
