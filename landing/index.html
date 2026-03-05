@@ -299,7 +299,11 @@
   <!-- HERO -->
   <section class="hero">
     <div class="container">
-      <div class="badge"><span class="dot"></span> Live on Solana Devnet</div>
+      <div style="display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap; margin-bottom:8px;">
+        <div class="badge"><span class="dot"></span> Live on Solana Devnet</div>
+        <a href="https://www.npmjs.com/package/intentguard-sdk" style="text-decoration:none;"><img src="https://img.shields.io/npm/v/intentguard-sdk?color=10b981&label=npm&style=flat-square" alt="npm" /></a>
+        <a href="https://crates.io/crates/intentguard-cpi" style="text-decoration:none;"><img src="https://img.shields.io/crates/v/intentguard-cpi?color=10b981&label=crates.io&style=flat-square" alt="crates.io" /></a>
+      </div>
       <h1>
         <span class="gradient">2FA</span> for every<br />
         Solana transaction
@@ -403,11 +407,22 @@
       <h2>Add 2FA to your dApp in 3 lines</h2>
       <p class="section-sub">No program changes needed. Just prepend a verify instruction to your existing transaction.</p>
 
+      <div class="install-tabs" style="display:flex; gap:16px; margin-bottom:20px; flex-wrap:wrap;">
+        <div class="integrate-code" style="flex:1; min-width:260px; padding:14px 18px; margin:0;">
+          <span class="comment"># TypeScript</span><br />
+          <span class="fn">npm install</span> <span class="white">intentguard-sdk</span>
+        </div>
+        <div class="integrate-code" style="flex:1; min-width:260px; padding:14px 18px; margin:0;">
+          <span class="comment"># Rust (CPI)</span><br />
+          <span class="fn">cargo add</span> <span class="white">intentguard-cpi</span>
+        </div>
+      </div>
+
       <div class="integrate-code">
         <span class="comment">// Build your normal transaction</span><br />
         <span class="keyword">const</span> <span class="white">swapIx</span> = <span class="fn">buildJupiterSwap</span>(<span class="white">params</span>);<br /><br />
         <span class="comment">// Add IntentGuard verification (1 line)</span><br />
-        <span class="keyword">const</span> <span class="white">verifyIx</span> = <span class="fn">intentGuard.verifyIntent</span>(<span class="white">hash</span>);<br /><br />
+        <span class="keyword">const</span> <span class="white">verifyIx</span> = <span class="fn">createVerifyIntentInstruction</span>(<span class="white">user, appId, hash</span>);<br /><br />
         <span class="comment">// Send as atomic transaction</span><br />
         <span class="keyword">const</span> <span class="white">tx</span> = <span class="keyword">new</span> <span class="fn">Transaction</span>().<span class="fn">add</span>(<span class="white">verifyIx</span>).<span class="fn">add</span>(<span class="white">swapIx</span>);<br />
       </div>
