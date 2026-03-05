@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::state::GuardConfig;
+use crate::state::{GuardConfig, DEFAULT_MIN_BALANCE};
 
 #[derive(Accounts)]
 pub struct InitializeGuard<'info> {
@@ -25,6 +25,7 @@ pub fn handler(ctx: Context<InitializeGuard>) -> Result<()> {
     config.is_paused = false;
     config.total_commits = 0;
     config.total_verifies = 0;
+    config.min_balance = DEFAULT_MIN_BALANCE;
     config.bump = ctx.bumps.config;
 
     msg!("IntentGuard initialized");

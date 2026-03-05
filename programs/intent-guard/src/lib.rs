@@ -50,4 +50,12 @@ pub mod intent_guard {
     pub fn transfer_admin(ctx: Context<AdminAction>, new_admin: Pubkey) -> Result<()> {
         instructions::admin::handler_transfer_admin(ctx, new_admin)
     }
+
+    pub fn update_config(ctx: Context<AdminAction>, new_min_balance: u64) -> Result<()> {
+        instructions::admin::handler_update_config(ctx, new_min_balance)
+    }
+
+    pub fn migrate_config(ctx: Context<MigrateConfig>) -> Result<()> {
+        instructions::admin::handler_migrate_config(ctx)
+    }
 }

@@ -43,6 +43,14 @@ pub fn handler(
     let config = &mut ctx.accounts.config;
     require!(!config.is_paused, GuardError::ProtocolPaused);
 
+    // Spam protection: user must hold minimum SOL balance
+    if config.min_balance > 0 {
+        require!(
+            ctx.accounts.user.lamports() >= config.min_balance,
+            GuardError::InsufficientBalance
+        );
+    }
+
     let effective_ttl = if ttl == 0 { DEFAULT_TTL } else { ttl };
     require!(effective_ttl >= MIN_TTL, GuardError::InvalidTtl);
     require!(effective_ttl <= MAX_TTL, GuardError::InvalidTtl);

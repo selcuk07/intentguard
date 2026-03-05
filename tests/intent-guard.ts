@@ -663,4 +663,139 @@ describe('intent-guard', () => {
       expect(config.admin.toBase58()).to.equal(admin.publicKey.toBase58());
     });
   });
+
+  describe('admin: update_config', () => {
+    it('admin can update min_balance', async () => {
+      await program.methods
+        .updateConfig(new anchor.BN(5_000_000)) // 0.005 SOL
+        .accounts({ config: configPda, admin: admin.publicKey })
+        .rpc();
+
+      const config = await program.account.guardConfig.fetch(configPda);
+      expect(config.minBalance.toNumber()).to.equal(5_000_000);
+    });
+
+    it('non-admin cannot update config', async () => {
+      const rando = Keypair.generate();
+      const sig = await provider.connection.requestAirdrop(
+        rando.publicKey,
+        10 * anchor.web3.LAMPORTS_PER_SOL,
+      );
+      await provider.connection.confirmTransaction(sig);
+
+      await expectError(
+        () =>
+          program.methods
+            .updateConfig(new anchor.BN(0))
+            .accounts({ config: configPda, admin: rando.publicKey })
+            .signers([rando])
+            .rpc(),
+        'Unauthorized',
+      );
+    });
+
+    it('rejects min_balance above 1 SOL', async () => {
+      await expectError(
+        () =>
+          program.methods
+            .updateConfig(new anchor.BN(2_000_000_000)) // 2 SOL > max
+            .accounts({ config: configPda, admin: admin.publicKey })
+            .rpc(),
+        'ConfigValueOutOfRange',
+      );
+    });
+
+    it('reset min_balance to 0 for remaining tests', async () => {
+      await program.methods
+        .updateConfig(new anchor.BN(0))
+        .accounts({ config: configPda, admin: admin.publicKey })
+        .rpc();
+
+      const config = await program.account.guardConfig.fetch(configPda);
+      expect(config.minBalance.toNumber()).to.equal(0);
+    });
+  });
+
+  describe('spam protection: min_balance', () => {
+    const poorUser = Keypair.generate();
+    const hash = computeHash([Buffer.from('spam-test')]);
+
+    it('commit rejected when user below min_balance', async () => {
+      // Set min_balance to 1 SOL (max allowed)
+      await program.methods
+        .updateConfig(new anchor.BN(1_000_000_000))
+        .accounts({ config: configPda, admin: admin.publicKey })
+        .rpc();
+
+      // Fund poor user with only 0.1 SOL (below min_balance)
+      const sig = await provider.connection.requestAirdrop(
+        poorUser.publicKey,
+        100_000_000, // 0.1 SOL
+      );
+      await provider.connection.confirmTransaction(sig);
+
+      const [intentPda] = findIntentPda(poorUser.publicKey, appId, program.programId);
+
+      await expectError(
+        () =>
+          program.methods
+            .commitIntent(appId, Buffer.from(hash), new anchor.BN(300))
+            .accounts({
+              intentCommit: intentPda,
+              config: configPda,
+              user: poorUser.publicKey,
+              systemProgram: SystemProgram.programId,
+            })
+            .signers([poorUser])
+            .rpc(),
+        'InsufficientBalance',
+      );
+    });
+
+    it('commit succeeds when min_balance is met', async () => {
+      // Lower min_balance to 0.5 SOL
+      await program.methods
+        .updateConfig(new anchor.BN(500_000_000))
+        .accounts({ config: configPda, admin: admin.publicKey })
+        .rpc();
+
+      const richUser = Keypair.generate();
+      const sig = await provider.connection.requestAirdrop(
+        richUser.publicKey,
+        10 * anchor.web3.LAMPORTS_PER_SOL,
+      );
+      await provider.connection.confirmTransaction(sig);
+
+      const [intentPda] = findIntentPda(richUser.publicKey, appId, program.programId);
+
+      await program.methods
+        .commitIntent(appId, Buffer.from(hash), new anchor.BN(300))
+        .accounts({
+          intentCommit: intentPda,
+          config: configPda,
+          user: richUser.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([richUser])
+        .rpc();
+
+      const commit = await program.account.intentCommit.fetch(intentPda);
+      expect(commit.user.toBase58()).to.equal(richUser.publicKey.toBase58());
+
+      // Cleanup
+      await program.methods
+        .revokeIntent(appId)
+        .accounts({ intentCommit: intentPda, user: richUser.publicKey })
+        .signers([richUser])
+        .rpc();
+    });
+
+    after(async () => {
+      // Reset min_balance to 0
+      await program.methods
+        .updateConfig(new anchor.BN(0))
+        .accounts({ config: configPda, admin: admin.publicKey })
+        .rpc();
+    });
+  });
 });

@@ -19,4 +19,10 @@ pub enum GuardError {
 
     #[msg("Unauthorized — only the admin can perform this action")]
     Unauthorized,
+
+    #[msg("Insufficient SOL balance to commit intent")]
+    InsufficientBalance,
+
+    #[msg("Config value out of allowed range")]
+    ConfigValueOutOfRange,
 }

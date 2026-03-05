@@ -40,6 +40,14 @@ impl IntentCommit {
     pub const SPACE: usize = 8 + 32 + 32 + 32 + 8 + 8 + 1;
 }
 
+/// Minimum SOL balance required to commit (lamports) — production default
+#[cfg(not(feature = "dev-testing"))]
+pub const DEFAULT_MIN_BALANCE: u64 = 10_000_000; // 0.01 SOL
+
+/// Minimum SOL balance — dev-testing (no restriction)
+#[cfg(feature = "dev-testing")]
+pub const DEFAULT_MIN_BALANCE: u64 = 0;
+
 /// Protocol configuration — global settings managed by admin.
 ///
 /// PDA seeds: [b"config"]
@@ -53,11 +61,13 @@ pub struct GuardConfig {
     pub total_commits: u64,
     /// Total intents verified (lifetime counter)
     pub total_verifies: u64,
+    /// Minimum SOL balance (lamports) required to commit an intent
+    pub min_balance: u64,
     /// PDA bump seed
     pub bump: u8,
 }
 
 impl GuardConfig {
-    /// Account space: 8 + 32 + 1 + 8 + 8 + 1 = 58
-    pub const SPACE: usize = 8 + 32 + 1 + 8 + 8 + 1;
+    /// Account space: 8 + 32 + 1 + 8 + 8 + 8 + 1 = 66
+    pub const SPACE: usize = 8 + 32 + 1 + 8 + 8 + 8 + 1;
 }
