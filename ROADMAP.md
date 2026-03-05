@@ -8,7 +8,7 @@
 - [x] Global counters: `total_commits`, `total_verifies`
 - [x] Protocol admin: `GuardConfig` with pause capability
 - [x] TypeScript SDK: `computeIntentHash`, `findIntentCommitPda`, `getIntentCommit`
-- [x] Test suite: 14 tests covering full flow, access control, TTL, multi-app
+- [x] Test suite: 23 tests covering full flow, access control, TTL, multi-app, admin
 - [x] README with integration guide
 - [x] BPF build: 231KB .so, IDL generated
 
@@ -60,15 +60,16 @@
 ## Phase 3 — SDK + Publishing ✅ DONE
 
 ### TypeScript SDK
-- [x] `intentguard-sdk` on npm (v0.1.0)
-- [x] Instruction builders (no Anchor dependency)
+- [x] `intentguard-sdk` on npm (v0.2.0)
+- [x] Instruction builders (no Anchor dependency) — commit, verify, revoke, pause, unpause, transfer_admin
 - [x] CJS + ESM dual output
 - [x] React component via subpath export
 - [x] SDK README with API docs
 
 ### Rust CPI Crate
-- [x] `intentguard-cpi` on crates.io (v0.1.0)
+- [x] `intentguard-cpi` on crates.io (v0.2.0)
 - [x] `verify_intent_cpi()`, `commit_intent_cpi()`, `revoke_intent_cpi()`
+- [x] `pause_protocol_cpi()`, `unpause_protocol_cpi()`, `transfer_admin_cpi()`
 - [x] `find_intent_commit_pda()`, `find_config_pda()` helpers
 - [ ] Anchor constraint macro: `#[intent_guard(hash = ...)]`
 
@@ -80,14 +81,16 @@
 - [x] Grant application document
 - [x] Twitter announcement thread draft
 
-## Phase 4 — Browser Extension (Week 6–7)
+## Phase 4 — Browser Extension ✅ DONE
 
-### Chrome/Firefox Extension
-- [ ] Intercepts wallet `signTransaction` calls
-- [ ] Shows popup: "Confirm this transaction with IntentGuard?"
-- [ ] Displays decoded parameters (token amounts, destinations)
-- [ ] Sends push to mobile app for confirmation
-- [ ] Blocks TX submission until intent is verified on-chain
+### Chrome Extension MVP
+- [x] Manifest V3 popup with protocol stats (total commits/verifies)
+- [x] Wallet intent checker (lookup pending intents by wallet + app_id)
+- [x] Content script: auto-detect Solana dApps, inject floating badge
+- [x] Pulse animation for active intents
+- [x] getProgramAccounts with discriminator filter
+- [ ] Intercept wallet `signTransaction` calls (block until verified)
+- [ ] Push notification to mobile app
 - [ ] Bypass list: trusted dApps that don't need 2FA
 
 ### Extension ↔ Mobile Pairing
@@ -109,14 +112,16 @@
 - [ ] Mobile app resolves `app_id` → human-readable name + icon
 - [ ] Governance for registry additions (prevent spoofing)
 
-## Phase 6 — Security + Audit (Week 11–13)
+## Phase 6 — Security + Audit (Week 11–13) — IN PROGRESS
 
 ### Security Hardening
-- [ ] Formal threat model document
+- [x] Formal threat model document (THREAT-MODEL.md — 12 attack vectors)
+- [x] Admin instructions: pause_protocol, unpause_protocol, transfer_admin
+- [x] Emergency pause tested end-to-end (9 admin tests, all passing)
+- [x] Access control: admin-only via `require!(config.admin == signer)`
 - [ ] Fuzzing with Trident or custom harness
 - [ ] Rate limiting: max N commits per user per epoch
 - [ ] Spam protection: minimum SOL balance to commit
-- [ ] Emergency pause tested end-to-end
 
 ### Audit
 - [ ] Select audit firm (OtterSec, Neodyme, Halborn, Trail of Bits)
@@ -181,7 +186,7 @@
 | CI/CD + Landing page | Week 2 | ✅ |
 | First integration (ACELaunch) | Week 2 | ✅ |
 | Mobile app TestFlight | Week 5 | |
-| Browser extension MVP | Week 7 | |
+| Browser extension MVP | Week 7 | ✅ |
 | Audit complete | Week 13 | |
 | Mainnet launch | Week 16 | |
 | 10 integrated dApps | Week 20 | |
