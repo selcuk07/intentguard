@@ -123,7 +123,7 @@
 - [x] Rate limiting: natural — only 1 active intent per user per app (PDA init constraint)
 - [x] update_config instruction: admin tunes min_balance (max 1 SOL cap)
 - [x] migrate_config instruction: safe realloc for config PDA upgrades
-- [ ] Fuzzing with Trident or custom harness
+- [x] Fuzzing with Trident: 8 flows, 5K iterations, ~1M instructions, 0 violations
 
 ### Audit
 - [ ] Select audit firm (OtterSec, Neodyme, Halborn, Trail of Bits)
