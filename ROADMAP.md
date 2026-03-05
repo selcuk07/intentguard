@@ -1,6 +1,6 @@
 # IntentGuard Roadmap
 
-## Phase 0 — Foundation (DONE)
+## Phase 0 — Foundation ✅ DONE
 
 - [x] On-chain program: `commit_intent`, `verify_intent`, `revoke_intent`, `initialize`
 - [x] PDA design: per-user per-app isolation (`[b"intent", user, app_id]`)
@@ -12,49 +12,75 @@
 - [x] README with integration guide
 - [x] BPF build: 231KB .so, IDL generated
 
-## Phase 1 — CLI + Devnet (Week 1–2)
+## Phase 1 — CLI + Devnet ✅ DONE
 
 ### CLI Commit Tool
-- [ ] `intentguard commit` — commit intent from terminal with keypair
-- [ ] `intentguard status` — check pending intents for a wallet
-- [ ] `intentguard revoke` — cancel pending intent
-- [ ] JSON config file support (app presets: Jupiter, Raydium, etc.)
-- [ ] Keypair file + Ledger hardware wallet support
+- [x] `intentguard commit` — commit intent from terminal with keypair
+- [x] `intentguard status` — check pending intents for a wallet
+- [x] `intentguard revoke` — cancel pending intent
+- [x] JSON config file support (app presets)
+- [ ] Ledger hardware wallet support
 
 ### Devnet Deployment
-- [ ] Deploy program to Solana devnet
-- [ ] Update program ID in Anchor.toml, SDK constants, README
-- [ ] Publish IDL on-chain (`anchor idl init`)
-- [ ] SDK points to devnet by default
+- [x] Deploy program to Solana devnet (`4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7`)
+- [x] Update program ID in Anchor.toml, SDK constants, README
+- [x] Publish IDL on-chain (`Dvn2qXEn4cvPW4fGEwjJ723gcvSdfooS2AVyqmyZxRKW`)
+- [x] SDK points to devnet by default
+- [x] Live devnet demo with real TX signatures
 
-### Integration Example
-- [ ] Example: IntentGuard + SPL Token transfer (simplest possible demo)
-- [ ] Example: IntentGuard + Jupiter swap (real-world use case)
-- [ ] Step-by-step integration tutorial in docs
+### Integration Examples
+- [x] Example: IntentGuard + SPL Token transfer
+- [x] Example: IntentGuard + Jupiter swap (protected-swap.ts)
+- [x] CPI integration example (Rust)
+- [x] Full flow example (TypeScript — commit → verify → close)
 
-## Phase 2 — Mobile App MVP (Week 3–5)
+## Phase 2 — Mobile App + Widget ✅ DONE
 
 ### React Native App (Expo)
-- [ ] QR code scanner screen
-- [ ] Intent confirmation screen (human-readable params)
-- [ ] Wallet connection (Solana Mobile Wallet Adapter)
-- [ ] Alternative: embedded keypair with biometric unlock
-- [ ] TX signing + submission to Solana RPC
+- [x] QR code scanner screen (expo-camera)
+- [x] Intent confirmation screen (human-readable params)
+- [x] Embedded keypair with biometric unlock (expo-secure-store + expo-local-authentication)
+- [x] TX signing + submission to Solana RPC
 - [ ] Push notification when intent is verified or expires
+- [ ] TestFlight / Play Store beta
 
 ### QR Protocol
-- [ ] Deep link format: `intentguard://commit?app=<id>&hash=<hex>&params=<json>`
-- [ ] QR contains: app name, human-readable action, amount, destination
+- [x] QR payload: `{ protocol: 'intentguard', version, app, action, params, display }`
+- [x] Human-readable display (action + description)
 - [ ] Anti-phishing: app registry with verified names + icons
-- [ ] Expiry encoded in QR (prevents stale scans)
+- [ ] Deep link support: `intentguard://commit?...`
 
 ### Frontend Widget
-- [ ] `<IntentGuardButton />` React component for dApp integration
-- [ ] States: idle → show QR → waiting for commit → verified → proceed
-- [ ] WebSocket/polling for IntentCommit PDA detection
+- [x] `<IntentGuardButton />` React component
+- [x] States: idle → show QR → waiting for commit → verified → expired
+- [x] Polling for IntentCommit PDA detection
+- [ ] WebSocket mode for faster detection
 - [ ] Fallback: manual hash entry for CLI users
 
-## Phase 3 — Browser Extension (Week 6–7)
+## Phase 3 — SDK + Publishing ✅ DONE
+
+### TypeScript SDK
+- [x] `intentguard-sdk` on npm (v0.1.0)
+- [x] Instruction builders (no Anchor dependency)
+- [x] CJS + ESM dual output
+- [x] React component via subpath export
+- [x] SDK README with API docs
+
+### Rust CPI Crate
+- [x] `intentguard-cpi` on crates.io (v0.1.0)
+- [x] `verify_intent_cpi()`, `commit_intent_cpi()`, `revoke_intent_cpi()`
+- [x] `find_intent_commit_pda()`, `find_config_pda()` helpers
+- [ ] Anchor constraint macro: `#[intent_guard(hash = ...)]`
+
+### Infrastructure
+- [x] GitHub public repo with MIT license
+- [x] GitHub Actions CI (SDK build + Rust check)
+- [x] GitHub Pages landing page with badges
+- [x] GitHub Release v0.1.0
+- [x] Grant application document
+- [x] Twitter announcement thread draft
+
+## Phase 4 — Browser Extension (Week 6–7)
 
 ### Chrome/Firefox Extension
 - [ ] Intercepts wallet `signTransaction` calls
@@ -69,27 +95,21 @@
 - [ ] Encrypted WebSocket channel for real-time communication
 - [ ] Device management: pair/unpair multiple devices
 
-## Phase 4 — CPI Framework + Partner Integrations (Week 8–10)
+## Phase 5 — Partner Integrations (Week 8–10)
 
-### CPI SDK (Rust)
-- [ ] `intentguard-cpi` crate on crates.io
-- [ ] `verify_intent_cpi()` helper function
-- [ ] Anchor constraint macro: `#[intent_guard(hash = ...)]`
-- [ ] Optional vs mandatory mode (dApps choose enforcement level)
-
-### Partner Integrations
+### Integrations
+- [x] ACELaunch: auction bid intent verification (IntentProof — live on devnet)
 - [ ] Jupiter: swap intent verification
 - [ ] Raydium: LP add/remove intent verification
 - [ ] Tensor/Magic Eden: NFT purchase intent verification
 - [ ] Marinade: stake/unstake intent verification
-- [ ] ACELaunch: auction bid intent verification (dogfooding)
 
 ### App Registry
 - [ ] On-chain registry of verified app names + metadata
 - [ ] Mobile app resolves `app_id` → human-readable name + icon
 - [ ] Governance for registry additions (prevent spoofing)
 
-## Phase 5 — Security + Audit (Week 11–13)
+## Phase 6 — Security + Audit (Week 11–13)
 
 ### Security Hardening
 - [ ] Formal threat model document
@@ -108,7 +128,7 @@
 - [ ] Immunefi listing
 - [ ] Bounty tiers: Critical ($50K), High ($10K), Medium ($2K)
 
-## Phase 6 — Mainnet + SDK Launch (Week 14–16)
+## Phase 7 — Mainnet + SDK v1.0 (Week 14–16)
 
 ### Mainnet Deployment
 - [ ] Deploy program to Solana mainnet-beta
@@ -117,8 +137,6 @@
 - [ ] Dashboard: real-time stats (commits, verifies, unique users)
 
 ### SDK v1.0
-- [ ] `intentguard-sdk` on npm ✅
-- [ ] `intentguard-cpi` on crates.io
 - [ ] Full API docs (TypeDoc)
 - [ ] Integration examples repo
 - [ ] Video tutorial: "Add 2FA to your Solana dApp in 10 minutes"
@@ -129,7 +147,7 @@
 - [ ] Onboarding flow: wallet connect → first intent → tutorial
 - [ ] Analytics: anonymous usage metrics
 
-## Phase 7 — Growth + Protocol Revenue (Week 17+)
+## Phase 8 — Growth + Protocol Revenue (Week 17+)
 
 ### Protocol Economics
 - [ ] Optional fee per verify (configurable, starts at 0)
@@ -144,7 +162,7 @@
 - [ ] Enterprise: custom deployment for institutional clients
 
 ### Community
-- [ ] Open-source all components (MIT license)
+- [x] Open-source all components (MIT license)
 - [ ] Developer documentation site
 - [ ] Discord community
 - [ ] Ambassador program for dApp integrations
@@ -154,16 +172,20 @@
 
 ## Key Metrics
 
-| Milestone | Target |
-|---|---|
-| Devnet deploy | Week 2 |
-| First external integration | Week 5 |
-| Mobile app testflight | Week 5 |
-| Audit complete | Week 13 |
-| Mainnet launch | Week 16 |
-| 10 integrated dApps | Week 20 |
-| 1,000 daily active users | Week 24 |
-| 10,000 daily intents | Week 30 |
+| Milestone | Target | Status |
+|---|---|---|
+| Foundation complete | Week 0 | ✅ |
+| CLI + Devnet deploy | Week 1 | ✅ |
+| Mobile app MVP | Week 2 | ✅ |
+| npm + crates.io publish | Week 2 | ✅ |
+| CI/CD + Landing page | Week 2 | ✅ |
+| First integration (ACELaunch) | Week 2 | ✅ |
+| Mobile app TestFlight | Week 5 | |
+| Browser extension MVP | Week 7 | |
+| Audit complete | Week 13 | |
+| Mainnet launch | Week 16 | |
+| 10 integrated dApps | Week 20 | |
+| 1,000 daily active users | Week 24 | |
 
 ## Revenue Model
 
