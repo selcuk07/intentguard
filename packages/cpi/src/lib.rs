@@ -39,6 +39,15 @@ const COMMIT_INTENT_DISCRIMINATOR: [u8; 8] = [175, 152, 13, 10, 40, 234, 201, 8]
 /// Anchor discriminator for `revoke_intent` instruction
 const REVOKE_INTENT_DISCRIMINATOR: [u8; 8] = [42, 248, 79, 132, 107, 96, 193, 153];
 
+/// Anchor discriminator for `pause_protocol` instruction
+const PAUSE_PROTOCOL_DISCRIMINATOR: [u8; 8] = [144, 95, 0, 107, 119, 39, 248, 141];
+
+/// Anchor discriminator for `unpause_protocol` instruction
+const UNPAUSE_PROTOCOL_DISCRIMINATOR: [u8; 8] = [183, 154, 5, 183, 105, 76, 87, 18];
+
+/// Anchor discriminator for `transfer_admin` instruction
+const TRANSFER_ADMIN_DISCRIMINATOR: [u8; 8] = [42, 242, 66, 106, 228, 10, 111, 156];
+
 /// Accounts required for `verify_intent` CPI.
 pub struct VerifyIntentAccounts<'info> {
     /// IntentCommit PDA — `[b"intent", user, app_id]`
@@ -71,6 +80,16 @@ pub struct RevokeIntentAccounts<'info> {
     pub intent_commit: AccountInfo<'info>,
     /// User wallet (signer, receives rent refund)
     pub user: AccountInfo<'info>,
+    /// IntentGuard program
+    pub intent_guard_program: AccountInfo<'info>,
+}
+
+/// Accounts required for admin CPI calls (pause/unpause/transfer).
+pub struct AdminAccounts<'info> {
+    /// GuardConfig PDA — `[b"config"]`
+    pub config: AccountInfo<'info>,
+    /// Admin wallet (signer, must match config.admin)
+    pub admin: AccountInfo<'info>,
     /// IntentGuard program
     pub intent_guard_program: AccountInfo<'info>,
 }
@@ -209,6 +228,73 @@ pub fn revoke_intent_cpi(
             accounts.user,
             accounts.intent_guard_program,
         ],
+    )?;
+
+    Ok(())
+}
+
+/// Pause the IntentGuard protocol via CPI (admin only).
+///
+/// Blocks new `commit_intent` calls until unpaused.
+pub fn pause_protocol_cpi(accounts: AdminAccounts) -> Result<()> {
+    let ix = Instruction {
+        program_id: INTENT_GUARD_PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new(accounts.config.key(), false),
+            AccountMeta::new(accounts.admin.key(), true),
+        ],
+        data: PAUSE_PROTOCOL_DISCRIMINATOR.to_vec(),
+    };
+
+    solana_program::program::invoke(
+        &ix,
+        &[accounts.config, accounts.admin, accounts.intent_guard_program],
+    )?;
+
+    Ok(())
+}
+
+/// Unpause the IntentGuard protocol via CPI (admin only).
+pub fn unpause_protocol_cpi(accounts: AdminAccounts) -> Result<()> {
+    let ix = Instruction {
+        program_id: INTENT_GUARD_PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new(accounts.config.key(), false),
+            AccountMeta::new(accounts.admin.key(), true),
+        ],
+        data: UNPAUSE_PROTOCOL_DISCRIMINATOR.to_vec(),
+    };
+
+    solana_program::program::invoke(
+        &ix,
+        &[accounts.config, accounts.admin, accounts.intent_guard_program],
+    )?;
+
+    Ok(())
+}
+
+/// Transfer admin authority via CPI (admin only).
+///
+/// # Arguments
+/// * `accounts` — Admin accounts
+/// * `new_admin` — The new admin public key
+pub fn transfer_admin_cpi(accounts: AdminAccounts, new_admin: Pubkey) -> Result<()> {
+    let mut data = Vec::with_capacity(8 + 32);
+    data.extend_from_slice(&TRANSFER_ADMIN_DISCRIMINATOR);
+    data.extend_from_slice(new_admin.as_ref());
+
+    let ix = Instruction {
+        program_id: INTENT_GUARD_PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new(accounts.config.key(), false),
+            AccountMeta::new(accounts.admin.key(), true),
+        ],
+        data,
+    };
+
+    solana_program::program::invoke(
+        &ix,
+        &[accounts.config, accounts.admin, accounts.intent_guard_program],
     )?;
 
     Ok(())

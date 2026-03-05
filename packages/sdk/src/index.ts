@@ -5,6 +5,9 @@ export {
   createCommitIntentInstruction,
   createVerifyIntentInstruction,
   createRevokeIntentInstruction,
+  createPauseProtocolInstruction,
+  createUnpauseProtocolInstruction,
+  createTransferAdminInstruction,
 } from './instructions';
 // React component available via 'intentguard-sdk/react'
 export { IntentGuardButton } from './react';

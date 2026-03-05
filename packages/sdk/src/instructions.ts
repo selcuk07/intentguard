@@ -11,6 +11,9 @@ import { findIntentCommitPda, findConfigPda } from './pdas';
 const DISCRIMINATOR_COMMIT = Buffer.from([175, 152, 13, 10, 40, 234, 201, 8]);
 const DISCRIMINATOR_VERIFY = Buffer.from([240, 198, 213, 223, 94, 7, 247, 247]);
 const DISCRIMINATOR_REVOKE = Buffer.from([42, 248, 79, 132, 107, 96, 193, 153]);
+const DISCRIMINATOR_PAUSE = Buffer.from([144, 95, 0, 107, 119, 39, 248, 141]);
+const DISCRIMINATOR_UNPAUSE = Buffer.from([183, 154, 5, 183, 105, 76, 87, 18]);
+const DISCRIMINATOR_TRANSFER_ADMIN = Buffer.from([42, 242, 66, 106, 228, 10, 111, 156]);
 
 /**
  * Build a commit_intent instruction without Anchor dependency.
@@ -106,6 +109,81 @@ export function createRevokeIntentInstruction(
     keys: [
       { pubkey: intentPda, isSigner: false, isWritable: true },
       { pubkey: user, isSigner: true, isWritable: true },
+    ],
+    programId,
+    data,
+  });
+}
+
+/**
+ * Build a pause_protocol instruction (admin only).
+ *
+ * @param admin - The admin wallet (signer)
+ * @param programId - IntentGuard program ID (default: devnet)
+ */
+export function createPauseProtocolInstruction(
+  admin: PublicKey,
+  programId: PublicKey = INTENT_GUARD_PROGRAM_ID,
+): TransactionInstruction {
+  const [configPda] = findConfigPda(programId);
+  const data = Buffer.from(DISCRIMINATOR_PAUSE);
+
+  return new TransactionInstruction({
+    keys: [
+      { pubkey: configPda, isSigner: false, isWritable: true },
+      { pubkey: admin, isSigner: true, isWritable: true },
+    ],
+    programId,
+    data,
+  });
+}
+
+/**
+ * Build an unpause_protocol instruction (admin only).
+ *
+ * @param admin - The admin wallet (signer)
+ * @param programId - IntentGuard program ID (default: devnet)
+ */
+export function createUnpauseProtocolInstruction(
+  admin: PublicKey,
+  programId: PublicKey = INTENT_GUARD_PROGRAM_ID,
+): TransactionInstruction {
+  const [configPda] = findConfigPda(programId);
+  const data = Buffer.from(DISCRIMINATOR_UNPAUSE);
+
+  return new TransactionInstruction({
+    keys: [
+      { pubkey: configPda, isSigner: false, isWritable: true },
+      { pubkey: admin, isSigner: true, isWritable: true },
+    ],
+    programId,
+    data,
+  });
+}
+
+/**
+ * Build a transfer_admin instruction (admin only).
+ *
+ * @param admin - The current admin wallet (signer)
+ * @param newAdmin - The new admin public key
+ * @param programId - IntentGuard program ID (default: devnet)
+ */
+export function createTransferAdminInstruction(
+  admin: PublicKey,
+  newAdmin: PublicKey,
+  programId: PublicKey = INTENT_GUARD_PROGRAM_ID,
+): TransactionInstruction {
+  const [configPda] = findConfigPda(programId);
+
+  // Serialize: discriminator(8) + new_admin(32)
+  const data = Buffer.alloc(8 + 32);
+  DISCRIMINATOR_TRANSFER_ADMIN.copy(data, 0);
+  newAdmin.toBuffer().copy(data, 8);
+
+  return new TransactionInstruction({
+    keys: [
+      { pubkey: configPda, isSigner: false, isWritable: true },
+      { pubkey: admin, isSigner: true, isWritable: true },
     ],
     programId,
     data,
