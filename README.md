@@ -1,5 +1,10 @@
 # IntentGuard
 
+[![CI](https://github.com/selcuk07/intentguard/actions/workflows/ci.yml/badge.svg)](https://github.com/selcuk07/intentguard/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/intentguard-sdk?color=10b981)](https://www.npmjs.com/package/intentguard-sdk)
+[![crates.io](https://img.shields.io/crates/v/intentguard-cpi?color=10b981)](https://crates.io/crates/intentguard-cpi)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 **Solana 2FA — Cryptographic intent verification for every transaction.**
 
 IntentGuard is an on-chain protocol that adds two-factor authentication to Solana transactions. Before executing any action through a dApp (browser), users first confirm their intent from a separate trusted device (mobile app, CLI, or hardware wallet). If the dApp is compromised and tries to alter transaction parameters, the on-chain hash verification fails and the transaction reverts.
