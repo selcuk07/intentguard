@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 360px;
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #0a0f1e;
+      color: #f1f5f9;
+    }
+
+    .header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #1f2d47;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header .shield { font-size: 20px; }
+    .header h1 { font-size: 16px; font-weight: 700; }
+    .header .version { font-size: 11px; color: #64748b; margin-left: auto; }
+
+    .status-bar {
+      padding: 12px 20px;
+      background: #111827;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+    }
+    .dot-green { background: #10b981; box-shadow: 0 0 6px #10b981; }
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+
+    .section { padding: 16px 20px; }
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #64748b;
+      margin-bottom: 12px;
+    }
+
+    .wallet-input {
+      width: 100%;
+      padding: 10px 12px;
+      background: #1a2236;
+      border: 1px solid #1f2d47;
+      border-radius: 8px;
+      color: #f1f5f9;
+      font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+      outline: none;
+    }
+    .wallet-input:focus { border-color: #10b981; }
+    .wallet-input::placeholder { color: #475569; }
+
+    .btn {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn-primary { background: #10b981; color: #fff; }
+    .btn-secondary { background: #1e293b; color: #f1f5f9; border: 1px solid #334155; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .intent-card {
+      background: #1a2236;
+      border: 1px solid #1f2d47;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+    .intent-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .intent-row:last-child { margin-bottom: 0; }
+    .intent-label { color: #94a3b8; }
+    .intent-value { color: #f1f5f9; font-family: monospace; font-size: 11px; }
+    .intent-status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .status-active { background: rgba(16,185,129,0.15); color: #10b981; }
+    .status-expired { background: rgba(239,68,68,0.15); color: #ef4444; }
+
+    .empty {
+      text-align: center;
+      padding: 24px;
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    .stats-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .stat-box {
+      flex: 1;
+      background: #1a2236;
+      border: 1px solid #1f2d47;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+    }
+    .stat-num { font-size: 18px; font-weight: 700; color: #10b981; }
+    .stat-label { font-size: 10px; color: #64748b; margin-top: 2px; }
+
+    .footer {
+      padding: 12px 20px;
+      border-top: 1px solid #1f2d47;
+      text-align: center;
+      font-size: 11px;
+      color: #475569;
+    }
+    .footer a { color: #10b981; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <span class="shield">&#x1f6e1;</span>
+    <h1>IntentGuard</h1>
+    <span class="version">v0.1.0</span>
+  </div>
+
+  <!-- Connection Status -->
+  <div class="status-bar" id="statusBar">
+    <div class="status-dot dot-yellow" id="statusDot"></div>
+    <span id="statusText">Connecting to devnet...</span>
+  </div>
+
+  <!-- Protocol Stats -->
+  <div class="section">
+    <div class="section-title">Protocol Stats</div>
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-num" id="totalCommits">—</div>
+        <div class="stat-label">Total Commits</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="totalVerifies">—</div>
+        <div class="stat-label">Total Verifies</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Check Intent -->
+  <div class="section" style="padding-top: 0;">
+    <div class="section-title">Check Pending Intent</div>
+    <input type="text" class="wallet-input" id="walletInput" placeholder="Wallet address..." />
+    <input type="text" class="wallet-input" id="appInput" placeholder="App ID (e.g. Jupiter program)..." style="margin-top: 8px;" />
+    <button class="btn btn-primary" id="checkBtn">Check Intent</button>
+  </div>
+
+  <!-- Result -->
+  <div class="section" id="resultSection" style="display: none; padding-top: 0;">
+    <div class="section-title">Result</div>
+    <div id="resultContent"></div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <a href="https://github.com/selcuk07/intentguard" target="_blank">GitHub</a>
+    &nbsp;·&nbsp;
+    <a href="https://www.npmjs.com/package/intentguard-sdk" target="_blank">npm</a>
+    &nbsp;·&nbsp;
+    <a href="https://selcuk07.github.io/intentguard" target="_blank">Docs</a>
+  </div>
+
+  <script src="src/popup.js"></script>
+</body>
+</html>

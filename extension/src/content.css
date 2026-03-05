@@ -1,0 +1,61 @@
+#intentguard-badge {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 999999;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+#intentguard-badge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3);
+}
+
+.ig-badge-inner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: #1a2236;
+  border: 1px solid #1f2d47;
+  border-radius: 20px;
+  font-family: 'Inter', -apple-system, sans-serif;
+  font-size: 13px;
+  color: #f1f5f9;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+
+.ig-shield {
+  font-size: 14px;
+}
+
+.ig-text {
+  font-weight: 600;
+}
+
+.ig-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-left: 4px;
+}
+
+.ig-status.ig-active {
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+  animation: ig-pulse 2s infinite;
+}
+
+.ig-status.ig-idle {
+  background: #64748b;
+}
+
+.ig-status.ig-error {
+  background: #ef4444;
+}
+
+@keyframes ig-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
