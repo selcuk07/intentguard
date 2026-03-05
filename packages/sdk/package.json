@@ -42,9 +42,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json",
     "clean": "rm -rf dist",
+    "docs": "typedoc --out docs src/index.ts --theme default --name 'IntentGuard SDK' --readme none",
     "prepublishOnly": "npm run clean && npm run build"
   },
-  "dependencies": {},
   "peerDependencies": {
     "@solana/web3.js": ">=1.90.0",
     "react": ">=17.0.0"
@@ -58,6 +58,7 @@
     "@solana/web3.js": "^1.98.0",
     "@types/react": "^18.0.0",
     "react": "^18.0.0",
+    "typedoc": "^0.28.17",
     "typescript": "^5.7.0"
   }
 }

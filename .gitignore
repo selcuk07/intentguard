@@ -8,3 +8,4 @@ test-ledger/
 .env
 .expo/
 package-lock.json
+packages/sdk/docs/

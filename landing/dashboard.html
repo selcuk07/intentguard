@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IntentGuard — Live Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0a0f1e;
+      --bg2: #111827;
+      --card: #1a2236;
+      --border: #1f2d47;
+      --green: #10b981;
+      --green-glow: rgba(16,185,129,0.15);
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --dim: #64748b;
+    }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .container { max-width: 1000px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    /* Header */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 2.5rem; flex-wrap: wrap; gap: 1rem;
+    }
+    .header h1 { font-size: 1.5rem; font-weight: 800; }
+    .header h1 span { color: var(--green); }
+    .header-links { display: flex; gap: 1rem; }
+    .header-links a {
+      color: var(--muted); text-decoration: none; font-size: 0.875rem;
+      transition: color 0.2s;
+    }
+    .header-links a:hover { color: var(--green); }
+
+    /* Status bar */
+    .status-bar {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.75rem 1.25rem; background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; margin-bottom: 2rem; font-size: 0.875rem;
+    }
+    .status-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--green); animation: pulse 2s infinite;
+    }
+    .status-dot.error { background: var(--red); animation: none; }
+    .status-dot.loading { background: var(--yellow); }
+    .status-network { color: var(--muted); margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* Stats grid */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.25rem; margin-bottom: 2.5rem;
+    }
+    .stat-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.5rem;
+      transition: border-color 0.3s;
+    }
+    .stat-card:hover { border-color: var(--green); }
+    .stat-label { font-size: 0.75rem; color: var(--dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+    .stat-value { font-size: 2rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+    .stat-value.green { color: var(--green); }
+    .stat-sub { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; }
+
+    /* Config table */
+    .section-title { font-size: 1.125rem; font-weight: 700; margin-bottom: 1rem; }
+    .config-table {
+      width: 100%; background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden; margin-bottom: 2.5rem;
+    }
+    .config-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1rem 1.5rem; border-bottom: 1px solid var(--border);
+    }
+    .config-row:last-child { border-bottom: none; }
+    .config-key { color: var(--muted); font-size: 0.875rem; }
+    .config-val { font-family: 'JetBrains Mono', monospace; font-size: 0.875rem; word-break: break-all; }
+    .config-val.mono { font-size: 0.75rem; }
+    .badge {
+      display: inline-block; padding: 0.2rem 0.6rem; border-radius: 6px;
+      font-size: 0.75rem; font-weight: 600;
+    }
+    .badge-green { background: rgba(16,185,129,0.15); color: var(--green); }
+    .badge-red { background: rgba(239,68,68,0.15); color: var(--red); }
+
+    /* Lookup */
+    .lookup-section { margin-bottom: 2.5rem; }
+    .lookup-form {
+      display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;
+    }
+    .lookup-form input {
+      flex: 1; min-width: 200px; padding: 0.75rem 1rem;
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+      color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+      outline: none; transition: border-color 0.2s;
+    }
+    .lookup-form input:focus { border-color: var(--green); }
+    .lookup-form input::placeholder { color: var(--dim); }
+    .lookup-btn {
+      padding: 0.75rem 1.5rem; background: var(--green); color: #000;
+      border: none; border-radius: 10px; font-weight: 600; cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .lookup-btn:hover { opacity: 0.85; }
+    .lookup-result {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.25rem; font-size: 0.875rem;
+      display: none;
+    }
+    .lookup-result.visible { display: block; }
+
+    /* Footer */
+    .footer { text-align: center; color: var(--dim); font-size: 0.75rem; padding: 2rem 0; }
+    .footer a { color: var(--green); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><span>IntentGuard</span> Dashboard</h1>
+      <div class="header-links">
+        <a href="index.html">Home</a>
+        <a href="https://github.com/selcuk07/intentguard" target="_blank">GitHub</a>
+        <a href="https://github.com/selcuk07/intentguard/blob/master/SECURITY.md" target="_blank">Bug Bounty</a>
+      </div>
+    </div>
+
+    <div class="status-bar" id="statusBar">
+      <div class="status-dot loading" id="statusDot"></div>
+      <span id="statusText">Connecting to Solana...</span>
+      <span class="status-network" id="networkLabel">devnet</span>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Commits</div>
+        <div class="stat-value green" id="totalCommits">—</div>
+        <div class="stat-sub">Lifetime intent commits</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Verifies</div>
+        <div class="stat-value green" id="totalVerifies">—</div>
+        <div class="stat-sub">Successful verifications</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Verify Rate</div>
+        <div class="stat-value" id="verifyRate">—</div>
+        <div class="stat-sub">Commits that were verified</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Protocol Status</div>
+        <div class="stat-value" id="protocolStatus">—</div>
+        <div class="stat-sub">Commit availability</div>
+      </div>
+    </div>
+
+    <div class="section-title">Protocol Configuration</div>
+    <div class="config-table">
+      <div class="config-row">
+        <span class="config-key">Program ID</span>
+        <span class="config-val mono">4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7</span>
+      </div>
+      <div class="config-row">
+        <span class="config-key">Config PDA</span>
+        <span class="config-val mono" id="configPda">—</span>
+      </div>
+      <div class="config-row">
+        <span class="config-key">Admin</span>
+        <span class="config-val mono" id="adminKey">—</span>
+      </div>
+      <div class="config-row">
+        <span class="config-key">Min Balance</span>
+        <span class="config-val" id="minBalance">—</span>
+      </div>
+      <div class="config-row">
+        <span class="config-key">Paused</span>
+        <span class="config-val" id="isPaused">—</span>
+      </div>
+      <div class="config-row">
+        <span class="config-key">Last Updated</span>
+        <span class="config-val" id="lastUpdated">—</span>
+      </div>
+    </div>
+
+    <div class="lookup-section">
+      <div class="section-title">Intent Lookup</div>
+      <div class="lookup-form">
+        <input type="text" id="lookupWallet" placeholder="Wallet address (base58)" />
+        <input type="text" id="lookupApp" placeholder="App ID (program pubkey)" />
+        <button class="lookup-btn" onclick="lookupIntent()">Check</button>
+      </div>
+      <div class="lookup-result" id="lookupResult"></div>
+    </div>
+
+    <div class="footer">
+      IntentGuard &mdash; Solana 2FA Protocol &middot; <a href="https://github.com/selcuk07/intentguard">Open Source (MIT)</a>
+      <br />Auto-refreshes every 30 seconds
+    </div>
+  </div>
+
+  <script>
+    const PROGRAM_ID = '4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7';
+    const RPC = 'https://api.devnet.solana.com';
+    const CONFIG_PDA = '6atm7ijvFwoRnDsJKz6yaYbKBMBuqvTXqHTtbNUieKCj';
+
+    // Base58 decode
+    const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+    function bs58decode(str) {
+      const bytes = [];
+      for (let i = 0; i < str.length; i++) {
+        let carry = ALPHABET.indexOf(str[i]);
+        if (carry < 0) throw new Error('Invalid base58');
+        for (let j = 0; j < bytes.length; j++) {
+          carry += bytes[j] * 58;
+          bytes[j] = carry & 0xff;
+          carry >>= 8;
+        }
+        while (carry > 0) { bytes.push(carry & 0xff); carry >>= 8; }
+      }
+      for (let i = 0; i < str.length && str[i] === '1'; i++) bytes.push(0);
+      return new Uint8Array(bytes.reverse());
+    }
+
+    function bs58encode(bytes) {
+      let num = 0n;
+      for (const b of bytes) num = num * 256n + BigInt(b);
+      let str = '';
+      while (num > 0n) { str = ALPHABET[Number(num % 58n)] + str; num /= 58n; }
+      for (const b of bytes) { if (b !== 0) break; str = '1' + str; }
+      return str || '1';
+    }
+
+    async function rpcCall(method, params) {
+      const res = await fetch(RPC, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message);
+      return json.result;
+    }
+
+    function readPubkey(data, offset) {
+      return bs58encode(data.slice(offset, offset + 32));
+    }
+
+    function readU64(data, offset) {
+      let val = 0n;
+      for (let i = 0; i < 8; i++) val += BigInt(data[offset + i]) << BigInt(i * 8);
+      return val;
+    }
+
+    function readI64(data, offset) {
+      const u = readU64(data, offset);
+      return u > 0x7FFFFFFFFFFFFFFFn ? u - 0x10000000000000000n : u;
+    }
+
+    async function fetchConfig() {
+      try {
+        const result = await rpcCall('getAccountInfo', [CONFIG_PDA, { encoding: 'base64' }]);
+        if (!result || !result.value) throw new Error('Config PDA not found');
+
+        const data = Uint8Array.from(atob(result.value.data[0]), c => c.charCodeAt(0));
+
+        // Discriminator(8) + admin(32) + is_paused(1) + total_commits(8) + total_verifies(8) + min_balance(8) + bump(1)
+        const admin = readPubkey(data, 8);
+        const isPaused = data[40] === 1;
+        const totalCommits = readU64(data, 41);
+        const totalVerifies = readU64(data, 49);
+        const minBalance = readU64(data, 57);
+
+        // Update UI
+        document.getElementById('totalCommits').textContent = totalCommits.toLocaleString();
+        document.getElementById('totalVerifies').textContent = totalVerifies.toLocaleString();
+
+        const rate = totalCommits > 0n ? Number(totalVerifies * 100n / totalCommits) : 0;
+        document.getElementById('verifyRate').textContent = rate + '%';
+
+        document.getElementById('protocolStatus').innerHTML = isPaused
+          ? '<span class="badge badge-red">PAUSED</span>'
+          : '<span class="badge badge-green">ACTIVE</span>';
+
+        document.getElementById('configPda').textContent = CONFIG_PDA;
+        document.getElementById('adminKey').textContent = admin;
+        document.getElementById('minBalance').textContent = (Number(minBalance) / 1e9).toFixed(4) + ' SOL';
+        document.getElementById('isPaused').innerHTML = isPaused
+          ? '<span class="badge badge-red">Yes</span>'
+          : '<span class="badge badge-green">No</span>';
+        document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
+
+        // Status bar
+        document.getElementById('statusDot').className = 'status-dot';
+        document.getElementById('statusText').textContent = 'Connected to Solana Devnet';
+      } catch (e) {
+        document.getElementById('statusDot').className = 'status-dot error';
+        document.getElementById('statusText').textContent = 'Error: ' + e.message;
+      }
+    }
+
+    async function lookupIntent() {
+      const wallet = document.getElementById('lookupWallet').value.trim();
+      const appId = document.getElementById('lookupApp').value.trim();
+      const resultEl = document.getElementById('lookupResult');
+
+      if (!wallet || !appId) {
+        resultEl.innerHTML = '<span style="color:var(--yellow)">Enter both wallet address and app ID</span>';
+        resultEl.classList.add('visible');
+        return;
+      }
+
+      try {
+        // Derive PDA: [b"intent", wallet, appId]
+        // We can't do PDA derivation in pure JS easily, so we check via getProgramAccounts
+        resultEl.innerHTML = '<span style="color:var(--muted)">Searching...</span>';
+        resultEl.classList.add('visible');
+
+        const walletBytes = bs58decode(wallet);
+        const appBytes = bs58decode(appId);
+
+        // Use getProgramAccounts with memcmp filters
+        const result = await rpcCall('getProgramAccounts', [
+          PROGRAM_ID,
+          {
+            encoding: 'base64',
+            filters: [
+              { dataSize: 121 }, // IntentCommit size
+              { memcmp: { offset: 8, bytes: wallet } },  // user field
+              { memcmp: { offset: 40, bytes: appId } },   // app_id field
+            ],
+          },
+        ]);
+
+        if (!result || result.length === 0) {
+          resultEl.innerHTML = '<span style="color:var(--dim)">No active intent found for this wallet + app combination</span>';
+          return;
+        }
+
+        const account = result[0];
+        const data = Uint8Array.from(atob(account.account.data[0]), c => c.charCodeAt(0));
+
+        const user = readPubkey(data, 8);
+        const app = readPubkey(data, 40);
+        const hashHex = Array.from(data.slice(72, 104)).map(b => b.toString(16).padStart(2, '0')).join('');
+        const committedAt = readI64(data, 104);
+        const expiresAt = readI64(data, 112);
+        const now = BigInt(Math.floor(Date.now() / 1000));
+        const isExpired = now > expiresAt;
+
+        resultEl.innerHTML = `
+          <div style="margin-bottom:0.75rem;font-weight:600;color:var(--green)">Active Intent Found</div>
+          <div style="display:grid;gap:0.5rem;font-size:0.8rem;">
+            <div><span style="color:var(--dim)">PDA:</span> <span style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;">${account.pubkey}</span></div>
+            <div><span style="color:var(--dim)">User:</span> <span style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;">${user}</span></div>
+            <div><span style="color:var(--dim)">App:</span> <span style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;">${app}</span></div>
+            <div><span style="color:var(--dim)">Hash:</span> <span style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;">${hashHex}</span></div>
+            <div><span style="color:var(--dim)">Committed:</span> ${new Date(Number(committedAt) * 1000).toLocaleString()}</div>
+            <div><span style="color:var(--dim)">Expires:</span> ${new Date(Number(expiresAt) * 1000).toLocaleString()} ${isExpired ? '<span class="badge badge-red">EXPIRED</span>' : '<span class="badge badge-green">ACTIVE</span>'}</div>
+          </div>
+        `;
+      } catch (e) {
+        resultEl.innerHTML = `<span style="color:var(--red)">Error: ${e.message}</span>`;
+      }
+    }
+
+    // Initial fetch + auto-refresh
+    fetchConfig();
+    setInterval(fetchConfig, 30000);
+  </script>
+</body>
+</html>
