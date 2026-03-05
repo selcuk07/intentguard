@@ -1,0 +1,455 @@
+{
+  "address": "4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7",
+  "metadata": {
+    "name": "intent_guard",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "IntentGuard — Solana 2FA: cryptographic intent verification protocol"
+  },
+  "instructions": [
+    {
+      "name": "commit_intent",
+      "discriminator": [
+        175,
+        152,
+        13,
+        10,
+        40,
+        234,
+        201,
+        8
+      ],
+      "accounts": [
+        {
+          "name": "intent_commit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  116,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "arg",
+                "path": "app_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "app_id",
+          "type": "pubkey"
+        },
+        {
+          "name": "intent_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "ttl",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "revoke_intent",
+      "discriminator": [
+        42,
+        248,
+        79,
+        132,
+        107,
+        96,
+        193,
+        153
+      ],
+      "accounts": [
+        {
+          "name": "intent_commit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  116,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "arg",
+                "path": "app_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "intent_commit"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "app_id",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "verify_intent",
+      "discriminator": [
+        240,
+        198,
+        213,
+        223,
+        94,
+        7,
+        247,
+        247
+      ],
+      "accounts": [
+        {
+          "name": "intent_commit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  116,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "intent_commit.app_id",
+                "account": "IntentCommit"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "intent_commit"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "intent_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "GuardConfig",
+      "discriminator": [
+        95,
+        175,
+        118,
+        50,
+        193,
+        113,
+        37,
+        250
+      ]
+    },
+    {
+      "name": "IntentCommit",
+      "discriminator": [
+        103,
+        72,
+        77,
+        62,
+        59,
+        234,
+        35,
+        126
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "ProtocolPaused",
+      "msg": "Protocol is paused"
+    },
+    {
+      "code": 6001,
+      "name": "IntentMismatch",
+      "msg": "Intent hash mismatch — transaction parameters differ from committed intent"
+    },
+    {
+      "code": 6002,
+      "name": "IntentExpired",
+      "msg": "Intent has expired — commit again from your trusted device"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidTtl",
+      "msg": "TTL must be between MIN_TTL and MAX_TTL seconds"
+    },
+    {
+      "code": 6004,
+      "name": "ArithmeticOverflow",
+      "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6005,
+      "name": "Unauthorized",
+      "msg": "Unauthorized — only the admin can perform this action"
+    }
+  ],
+  "types": [
+    {
+      "name": "GuardConfig",
+      "docs": [
+        "Protocol configuration — global settings managed by admin.",
+        "",
+        "PDA seeds: [b\"config\"]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "docs": [
+              "Protocol admin (can pause, update config)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "is_paused",
+            "docs": [
+              "Whether the protocol is paused"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "total_commits",
+            "docs": [
+              "Total intents committed (lifetime counter)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "total_verifies",
+            "docs": [
+              "Total intents verified (lifetime counter)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed"
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "IntentCommit",
+      "docs": [
+        "IntentCommit — on-chain record of a user's declared intent.",
+        "",
+        "Created by `commit_intent` (TX1 from trusted device).",
+        "Consumed by `verify_intent` (TX2 from browser/dApp).",
+        "",
+        "PDA seeds: [b\"intent\", user, app_id]",
+        "One active intent per user per app."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "docs": [
+              "Wallet that committed the intent"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "app_id",
+            "docs": [
+              "Target application/program identifier"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "intent_hash",
+            "docs": [
+              "SHA-256 hash of the intent parameters"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "committed_at",
+            "docs": [
+              "Unix timestamp when committed"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "expires_at",
+            "docs": [
+              "Unix timestamp when this commit expires"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed"
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}

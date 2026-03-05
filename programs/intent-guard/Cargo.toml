@@ -1,0 +1,22 @@
+[package]
+name = "intent-guard"
+version = "0.1.0"
+description = "IntentGuard — Solana 2FA: cryptographic intent verification protocol"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "intent_guard"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+dev-testing = []
+idl-build = ["anchor-lang/idl-build"]
+
+[dependencies]
+anchor-lang = "0.32.1"
+solana-sha256-hasher = "2.3.0"

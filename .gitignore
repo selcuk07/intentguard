@@ -1,0 +1,10 @@
+target/
+node_modules/
+dist/
+.anchor/
+test-ledger/
+*.so
+.DS_Store
+.env
+.expo/
+package-lock.json

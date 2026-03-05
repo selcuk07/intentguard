@@ -1,0 +1,63 @@
+{
+  "name": "@intentguard/sdk",
+  "version": "0.1.0",
+  "description": "IntentGuard SDK — Solana 2FA for any dApp. Commit-reveal intent verification with device separation.",
+  "author": "IntentGuard Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/selcuk07/intentguard.git",
+    "directory": "packages/sdk"
+  },
+  "homepage": "https://github.com/selcuk07/intentguard",
+  "keywords": [
+    "solana",
+    "2fa",
+    "intent",
+    "security",
+    "commit-reveal",
+    "transaction-verification",
+    "anchor",
+    "web3"
+  ],
+  "main": "dist/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/esm/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./react": {
+      "require": "./dist/react.js",
+      "import": "./dist/esm/react.js",
+      "types": "./dist/react.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "@solana/web3.js": ">=1.90.0",
+    "react": ">=17.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@solana/web3.js": "^1.98.0",
+    "@types/react": "^18.0.0",
+    "react": "^18.0.0",
+    "typescript": "^5.7.0"
+  }
+}
