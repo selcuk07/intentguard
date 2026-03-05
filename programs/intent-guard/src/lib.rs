@@ -38,4 +38,16 @@ pub mod intent_guard {
     ) -> Result<()> {
         instructions::revoke_intent::handler(ctx, app_id)
     }
+
+    pub fn pause_protocol(ctx: Context<AdminAction>) -> Result<()> {
+        instructions::admin::handler_pause(ctx)
+    }
+
+    pub fn unpause_protocol(ctx: Context<AdminAction>) -> Result<()> {
+        instructions::admin::handler_unpause(ctx)
+    }
+
+    pub fn transfer_admin(ctx: Context<AdminAction>, new_admin: Pubkey) -> Result<()> {
+        instructions::admin::handler_transfer_admin(ctx, new_admin)
+    }
 }

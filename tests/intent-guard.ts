@@ -513,4 +513,154 @@ describe('intent-guard', () => {
         .rpc();
     });
   });
+
+  describe('admin: pause/unpause', () => {
+    const user = Keypair.generate();
+    const hash = computeHash([Buffer.from('pause-test')]);
+
+    before(async () => {
+      const sig = await provider.connection.requestAirdrop(
+        user.publicKey,
+        10 * anchor.web3.LAMPORTS_PER_SOL,
+      );
+      await provider.connection.confirmTransaction(sig);
+    });
+
+    it('admin can pause the protocol', async () => {
+      await program.methods
+        .pauseProtocol()
+        .accounts({ config: configPda, admin: admin.publicKey })
+        .rpc();
+
+      const config = await program.account.guardConfig.fetch(configPda);
+      expect(config.isPaused).to.equal(true);
+    });
+
+    it('commit fails when paused', async () => {
+      const [intentPda] = findIntentPda(user.publicKey, appId, program.programId);
+
+      await expectError(
+        () =>
+          program.methods
+            .commitIntent(appId, Buffer.from(hash), new anchor.BN(300))
+            .accounts({
+              intentCommit: intentPda,
+              config: configPda,
+              user: user.publicKey,
+              systemProgram: SystemProgram.programId,
+            })
+            .signers([user])
+            .rpc(),
+        'ProtocolPaused',
+      );
+    });
+
+    it('non-admin cannot unpause', async () => {
+      await expectError(
+        () =>
+          program.methods
+            .unpauseProtocol()
+            .accounts({ config: configPda, admin: user.publicKey })
+            .signers([user])
+            .rpc(),
+        'Unauthorized',
+      );
+    });
+
+    it('admin can unpause the protocol', async () => {
+      await program.methods
+        .unpauseProtocol()
+        .accounts({ config: configPda, admin: admin.publicKey })
+        .rpc();
+
+      const config = await program.account.guardConfig.fetch(configPda);
+      expect(config.isPaused).to.equal(false);
+    });
+
+    it('commit works again after unpause', async () => {
+      const [intentPda] = findIntentPda(user.publicKey, appId, program.programId);
+
+      await program.methods
+        .commitIntent(appId, Buffer.from(hash), new anchor.BN(300))
+        .accounts({
+          intentCommit: intentPda,
+          config: configPda,
+          user: user.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([user])
+        .rpc();
+
+      const commit = await program.account.intentCommit.fetch(intentPda);
+      expect(commit.user.toBase58()).to.equal(user.publicKey.toBase58());
+
+      // Cleanup
+      await program.methods
+        .revokeIntent(appId)
+        .accounts({ intentCommit: intentPda, user: user.publicKey })
+        .signers([user])
+        .rpc();
+    });
+  });
+
+  describe('admin: transfer authority', () => {
+    const newAdmin = Keypair.generate();
+
+    it('non-admin cannot transfer', async () => {
+      const rando = Keypair.generate();
+      const sig = await provider.connection.requestAirdrop(
+        rando.publicKey,
+        10 * anchor.web3.LAMPORTS_PER_SOL,
+      );
+      await provider.connection.confirmTransaction(sig);
+
+      await expectError(
+        () =>
+          program.methods
+            .transferAdmin(newAdmin.publicKey)
+            .accounts({ config: configPda, admin: rando.publicKey })
+            .signers([rando])
+            .rpc(),
+        'Unauthorized',
+      );
+    });
+
+    it('admin can transfer authority', async () => {
+      await program.methods
+        .transferAdmin(newAdmin.publicKey)
+        .accounts({ config: configPda, admin: admin.publicKey })
+        .rpc();
+
+      const config = await program.account.guardConfig.fetch(configPda);
+      expect(config.admin.toBase58()).to.equal(newAdmin.publicKey.toBase58());
+    });
+
+    it('old admin can no longer pause', async () => {
+      await expectError(
+        () =>
+          program.methods
+            .pauseProtocol()
+            .accounts({ config: configPda, admin: admin.publicKey })
+            .rpc(),
+        'Unauthorized',
+      );
+    });
+
+    it('transfer back to original admin for other tests', async () => {
+      const sig = await provider.connection.requestAirdrop(
+        newAdmin.publicKey,
+        10 * anchor.web3.LAMPORTS_PER_SOL,
+      );
+      await provider.connection.confirmTransaction(sig);
+
+      await program.methods
+        .transferAdmin(admin.publicKey)
+        .accounts({ config: configPda, admin: newAdmin.publicKey })
+        .signers([newAdmin])
+        .rpc();
+
+      const config = await program.account.guardConfig.fetch(configPda);
+      expect(config.admin.toBase58()).to.equal(admin.publicKey.toBase58());
+    });
+  });
 });
