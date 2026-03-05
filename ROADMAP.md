@@ -8,7 +8,7 @@
 - [x] Global counters: `total_commits`, `total_verifies`
 - [x] Protocol admin: `GuardConfig` with pause capability
 - [x] TypeScript SDK: `computeIntentHash`, `findIntentCommitPda`, `getIntentCommit`
-- [x] Test suite: 23 tests covering full flow, access control, TTL, multi-app, admin
+- [x] Test suite: 29 tests covering full flow, access control, TTL, multi-app, admin, spam protection
 - [x] README with integration guide
 - [x] BPF build: 231KB .so, IDL generated
 
@@ -119,9 +119,11 @@
 - [x] Admin instructions: pause_protocol, unpause_protocol, transfer_admin
 - [x] Emergency pause tested end-to-end (9 admin tests, all passing)
 - [x] Access control: admin-only via `require!(config.admin == signer)`
+- [x] Spam protection: configurable min_balance (0.01 SOL default, admin-tunable)
+- [x] Rate limiting: natural — only 1 active intent per user per app (PDA init constraint)
+- [x] update_config instruction: admin tunes min_balance (max 1 SOL cap)
+- [x] migrate_config instruction: safe realloc for config PDA upgrades
 - [ ] Fuzzing with Trident or custom harness
-- [ ] Rate limiting: max N commits per user per epoch
-- [ ] Spam protection: minimum SOL balance to commit
 
 ### Audit
 - [ ] Select audit firm (OtterSec, Neodyme, Halborn, Trail of Bits)
