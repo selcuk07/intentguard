@@ -1,4 +1,4 @@
-import { Connection, Keypair, PublicKey } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey, Transaction, VersionedTransaction } from '@solana/web3.js';
 import * as anchor from '@coral-xyz/anchor';
 import { createHash } from 'crypto';
 import * as fs from 'fs';
@@ -9,6 +9,13 @@ import idl from '../intent_guard.json';
 
 // Program ID — update after devnet deploy
 export const PROGRAM_ID = new PublicKey(idl.address);
+
+/** Wallet interface compatible with Anchor's provider */
+export interface WalletAdapter {
+  signTransaction<T extends Transaction | VersionedTransaction>(tx: T): Promise<T>;
+  signAllTransactions<T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]>;
+  publicKey: PublicKey;
+}
 
 export function findConfigPda(): [PublicKey, number] {
   return PublicKey.findProgramAddressSync([Buffer.from('config')], PROGRAM_ID);
@@ -32,6 +39,31 @@ export function loadKeypair(keypairPath?: string): Keypair {
 
   const raw = JSON.parse(fs.readFileSync(resolvedPath, 'utf-8'));
   return Keypair.fromSecretKey(Uint8Array.from(raw));
+}
+
+/**
+ * Load a wallet from either a keypair file or Ledger device.
+ * Returns a WalletAdapter suitable for Anchor's provider.
+ */
+export async function loadWallet(opts: {
+  keypair?: string;
+  ledger?: boolean;
+  derivationPath?: string;
+}): Promise<WalletAdapter> {
+  if (opts.ledger) {
+    const { LedgerWallet } = await import('./ledger');
+    return LedgerWallet.connect(opts.derivationPath);
+  }
+  const keypair = loadKeypair(opts.keypair);
+  return new anchor.Wallet(keypair);
+}
+
+export function getProgramWithWallet(wallet: WalletAdapter, rpcUrl: string) {
+  const connection = new Connection(rpcUrl, 'confirmed');
+  const provider = new anchor.AnchorProvider(connection, wallet as anchor.Wallet, {
+    commitment: 'confirmed',
+  });
+  return new anchor.Program(idl as anchor.Idl, provider);
 }
 
 export function getRpcUrl(cluster?: string): string {

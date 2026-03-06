@@ -263,6 +263,31 @@ intentguard/
 └── Anchor.toml
 ```
 
+## CLI — Ledger Hardware Wallet
+
+The CLI supports signing with a Ledger hardware wallet via `--ledger`:
+
+```bash
+# Commit intent using Ledger
+intentguard commit \
+  --ledger \
+  --app JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4 \
+  --action swap \
+  --params '{"inputMint":"EPjFWdd5...","amount":"1000000"}' \
+  --cluster devnet
+
+# Check status
+intentguard status --ledger --app JUP6LkbZ...
+
+# Revoke
+intentguard revoke --ledger --app JUP6LkbZ...
+
+# Custom derivation path (default: 44'/501'/0'/0')
+intentguard commit --ledger --derivation-path "44'/501'/1'/0'" ...
+```
+
+**Requirements:** Ledger device connected via USB with the Solana app open.
+
 ## Development
 
 ### Prerequisites

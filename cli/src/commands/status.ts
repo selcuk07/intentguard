@@ -2,9 +2,9 @@ import { PublicKey } from '@solana/web3.js';
 import chalk from 'chalk';
 import ora from 'ora';
 import {
-  loadKeypair,
+  loadWallet,
   getRpcUrl,
-  getProgram,
+  getProgramWithWallet,
   findIntentPda,
   findConfigPda,
   shortKey,
@@ -16,6 +16,8 @@ interface StatusOptions {
   app?: string;
   user?: string;
   keypair?: string;
+  ledger?: boolean;
+  derivationPath?: string;
   cluster?: string;
 }
 
@@ -23,11 +25,12 @@ export async function statusCommand(opts: StatusOptions): Promise<void> {
   const spinner = ora('Fetching status...').start();
 
   try {
-    const keypair = loadKeypair(opts.keypair);
+    if (opts.ledger) spinner.text = 'Connecting to Ledger...';
+    const wallet = await loadWallet(opts);
     const rpcUrl = getRpcUrl(opts.cluster);
-    const program = getProgram(keypair, rpcUrl);
+    const program = getProgramWithWallet(wallet, rpcUrl);
 
-    const userPubkey = opts.user ? new PublicKey(opts.user) : keypair.publicKey;
+    const userPubkey = opts.user ? new PublicKey(opts.user) : wallet.publicKey;
 
     // If specific app is provided, check that single intent
     if (opts.app) {

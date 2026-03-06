@@ -19,7 +19,7 @@
 - [x] `intentguard status` — check pending intents for a wallet
 - [x] `intentguard revoke` — cancel pending intent
 - [x] JSON config file support (app presets)
-- [ ] Ledger hardware wallet support
+- [x] Ledger hardware wallet support
 
 ### Devnet Deployment
 - [x] Deploy program to Solana devnet (`4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7`)
@@ -47,7 +47,7 @@
 ### QR Protocol
 - [x] QR payload: `{ protocol: 'intentguard', version, app, action, params, display }`
 - [x] Human-readable display (action + description)
-- [ ] Anti-phishing: app registry with verified names + icons
+- [x] Anti-phishing: app registry with verified names + icons
 - [ ] Deep link support: `intentguard://commit?...`
 
 ### Frontend Widget

@@ -13,39 +13,47 @@ program
   .description('IntentGuard CLI — Solana 2FA from your terminal')
   .version('0.1.0');
 
-program
-  .command('init')
-  .description('Initialize IntentGuard protocol (one-time admin setup)')
-  .option('-k, --keypair <path>', 'Path to keypair file')
-  .option('-c, --cluster <cluster>', 'Solana cluster (devnet|mainnet|localnet|<url>)')
-  .action(initCommand);
+/** Add common wallet options to a command */
+function addWalletOptions(cmd: Command): Command {
+  return cmd
+    .option('-k, --keypair <path>', 'Path to keypair file')
+    .option('--ledger', 'Sign with Ledger hardware wallet')
+    .option('--derivation-path <path>', "Ledger derivation path (default: 44'/501'/0'/0')");
+}
 
-program
-  .command('commit')
-  .description('Commit an intent hash on-chain (TX1 from trusted device)')
-  .requiredOption('-a, --app <pubkey>', 'Target app/program ID')
-  .requiredOption('--action <label>', 'Action label (e.g., "swap", "transfer", "bid")')
-  .requiredOption('-p, --params <json>', 'Intent parameters as JSON string')
-  .option('-t, --ttl <seconds>', 'Time-to-live in seconds (default: 300)', '300')
-  .option('-k, --keypair <path>', 'Path to keypair file')
-  .option('-c, --cluster <cluster>', 'Solana cluster (devnet|mainnet|localnet|<url>)')
-  .action(commitCommand);
+addWalletOptions(
+  program
+    .command('init')
+    .description('Initialize IntentGuard protocol (one-time admin setup)')
+    .option('-c, --cluster <cluster>', 'Solana cluster (devnet|mainnet|localnet|<url>)')
+).action(initCommand);
 
-program
-  .command('status')
-  .description('Check pending intents for a wallet')
-  .option('-a, --app <pubkey>', 'Filter by app ID (checks specific intent)')
-  .option('-u, --user <pubkey>', 'Check another wallet (default: your keypair)')
-  .option('-k, --keypair <path>', 'Path to keypair file')
-  .option('-c, --cluster <cluster>', 'Solana cluster')
-  .action(statusCommand);
+addWalletOptions(
+  program
+    .command('commit')
+    .description('Commit an intent hash on-chain (TX1 from trusted device)')
+    .requiredOption('-a, --app <pubkey>', 'Target app/program ID')
+    .requiredOption('--action <label>', 'Action label (e.g., "swap", "transfer", "bid")')
+    .requiredOption('-p, --params <json>', 'Intent parameters as JSON string')
+    .option('-t, --ttl <seconds>', 'Time-to-live in seconds (default: 300)', '300')
+    .option('-c, --cluster <cluster>', 'Solana cluster (devnet|mainnet|localnet|<url>)')
+).action(commitCommand);
 
-program
-  .command('revoke')
-  .description('Revoke a pending intent commit')
-  .requiredOption('-a, --app <pubkey>', 'App ID of the intent to revoke')
-  .option('-k, --keypair <path>', 'Path to keypair file')
-  .option('-c, --cluster <cluster>', 'Solana cluster')
-  .action(revokeCommand);
+addWalletOptions(
+  program
+    .command('status')
+    .description('Check pending intents for a wallet')
+    .option('-a, --app <pubkey>', 'Filter by app ID (checks specific intent)')
+    .option('-u, --user <pubkey>', 'Check another wallet (default: your keypair)')
+    .option('-c, --cluster <cluster>', 'Solana cluster')
+).action(statusCommand);
+
+addWalletOptions(
+  program
+    .command('revoke')
+    .description('Revoke a pending intent commit')
+    .requiredOption('-a, --app <pubkey>', 'App ID of the intent to revoke')
+    .option('-c, --cluster <cluster>', 'Solana cluster')
+).action(revokeCommand);
 
 program.parse();

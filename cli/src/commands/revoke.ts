@@ -2,9 +2,9 @@ import { PublicKey } from '@solana/web3.js';
 import chalk from 'chalk';
 import ora from 'ora';
 import {
-  loadKeypair,
+  loadWallet,
   getRpcUrl,
-  getProgram,
+  getProgramWithWallet,
   findIntentPda,
   shortKey,
 } from '../helpers';
@@ -12,6 +12,8 @@ import {
 interface RevokeOptions {
   app: string;
   keypair?: string;
+  ledger?: boolean;
+  derivationPath?: string;
   cluster?: string;
 }
 
@@ -19,12 +21,18 @@ export async function revokeCommand(opts: RevokeOptions): Promise<void> {
   const spinner = ora('Revoking intent...').start();
 
   try {
-    const keypair = loadKeypair(opts.keypair);
+    if (opts.ledger) spinner.text = 'Connecting to Ledger...';
+    const wallet = await loadWallet(opts);
     const rpcUrl = getRpcUrl(opts.cluster);
-    const program = getProgram(keypair, rpcUrl);
+    const program = getProgramWithWallet(wallet, rpcUrl);
+
+    if (opts.ledger) {
+      spinner.info(chalk.cyan(`Ledger connected: ${shortKey(wallet.publicKey)}`));
+      spinner.start('Revoking intent...');
+    }
 
     const appId = new PublicKey(opts.app);
-    const [intentPda] = findIntentPda(keypair.publicKey, appId);
+    const [intentPda] = findIntentPda(wallet.publicKey, appId);
 
     // Check if intent exists
     spinner.text = 'Checking intent...';
@@ -35,15 +43,16 @@ export async function revokeCommand(opts: RevokeOptions): Promise<void> {
       return;
     }
 
-    spinner.text = 'Revoking intent on-chain...';
+    spinner.text = opts.ledger
+      ? 'Revoking intent on-chain (confirm on Ledger)...'
+      : 'Revoking intent on-chain...';
 
     const tx = await program.methods
       .revokeIntent(appId)
       .accounts({
         intentCommit: intentPda,
-        user: keypair.publicKey,
+        user: wallet.publicKey,
       })
-      .signers([keypair])
       .rpc();
 
     spinner.succeed(chalk.green('Intent revoked!'));

@@ -11,9 +11,11 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",
+    "@ledgerhq/hw-app-solana": "^7.7.0",
+    "@ledgerhq/hw-transport-node-hid": "^6.30.0",
     "@solana/web3.js": "^1.98.0",
-    "commander": "^12.1.0",
     "chalk": "^4.1.2",
+    "commander": "^12.1.0",
     "ora": "^5.4.1"
   },
   "devDependencies": {

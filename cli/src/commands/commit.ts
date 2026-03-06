@@ -3,9 +3,9 @@ import * as anchor from '@coral-xyz/anchor';
 import chalk from 'chalk';
 import ora from 'ora';
 import {
-  loadKeypair,
+  loadWallet,
   getRpcUrl,
-  getProgram,
+  getProgramWithWallet,
   findConfigPda,
   findIntentPda,
   computeActionHash,
@@ -18,6 +18,8 @@ interface CommitOptions {
   params: string;
   ttl: string;
   keypair?: string;
+  ledger?: boolean;
+  derivationPath?: string;
   cluster?: string;
 }
 
@@ -25,9 +27,15 @@ export async function commitCommand(opts: CommitOptions): Promise<void> {
   const spinner = ora('Preparing intent...').start();
 
   try {
-    const keypair = loadKeypair(opts.keypair);
+    if (opts.ledger) spinner.text = 'Connecting to Ledger...';
+    const wallet = await loadWallet(opts);
     const rpcUrl = getRpcUrl(opts.cluster);
-    const program = getProgram(keypair, rpcUrl);
+    const program = getProgramWithWallet(wallet, rpcUrl);
+
+    if (opts.ledger) {
+      spinner.info(chalk.cyan(`Ledger connected: ${shortKey(wallet.publicKey)}`));
+      spinner.start('Preparing intent...');
+    }
 
     const appId = new PublicKey(opts.app);
     const ttl = parseInt(opts.ttl, 10);
@@ -43,10 +51,10 @@ export async function commitCommand(opts: CommitOptions): Promise<void> {
     }
 
     // Compute hash
-    const intentHash = computeActionHash(appId, keypair.publicKey, opts.action, params);
+    const intentHash = computeActionHash(appId, wallet.publicKey, opts.action, params);
 
     const [configPda] = findConfigPda();
-    const [intentPda] = findIntentPda(keypair.publicKey, appId);
+    const [intentPda] = findIntentPda(wallet.publicKey, appId);
 
     // Check if intent already exists
     spinner.text = 'Checking for existing intent...';
@@ -57,17 +65,18 @@ export async function commitCommand(opts: CommitOptions): Promise<void> {
       process.exit(1);
     }
 
-    spinner.text = 'Committing intent on-chain...';
+    spinner.text = opts.ledger
+      ? 'Committing intent on-chain (confirm on Ledger)...'
+      : 'Committing intent on-chain...';
 
     const tx = await program.methods
       .commitIntent(appId, Buffer.from(intentHash), new anchor.BN(ttl))
       .accounts({
         intentCommit: intentPda,
         config: configPda,
-        user: keypair.publicKey,
+        user: wallet.publicKey,
         systemProgram: SystemProgram.programId,
       })
-      .signers([keypair])
       .rpc();
 
     spinner.succeed(chalk.green('Intent committed!'));
@@ -82,7 +91,7 @@ export async function commitCommand(opts: CommitOptions): Promise<void> {
     console.log(chalk.bold('  On-chain:'));
     console.log(`  PDA:      ${chalk.cyan(intentPda.toBase58())}`);
     console.log(`  TX:       ${chalk.dim(tx)}`);
-    console.log(`  Wallet:   ${chalk.cyan(shortKey(keypair.publicKey))}`);
+    console.log(`  Wallet:   ${chalk.cyan(shortKey(wallet.publicKey))}${opts.ledger ? chalk.dim(' (Ledger)') : ''}`);
     console.log();
     console.log(chalk.green.bold('  Now proceed to execute the action in your dApp.'));
     console.log(chalk.dim(`  The intent will expire in ${ttl} seconds.`));
