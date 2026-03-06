@@ -257,6 +257,7 @@
       }),
     });
     const json = await res.json();
+    if (json.error) throw new Error(json.error.message || 'RPC error');
     if (!json.result || json.result.length === 0) return false;
 
     // Check if any are still active (not expired)

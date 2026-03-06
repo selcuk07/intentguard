@@ -99,6 +99,7 @@ async function rpcCall(method, params) {
     body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
   });
   const json = await res.json();
+  if (json.error) throw new Error(json.error.message || 'RPC error');
   return json.result;
 }
 
@@ -169,7 +170,9 @@ async function fetchProtocolStats() {
       document.getElementById('totalCommits').textContent = config.totalCommits.toLocaleString();
       document.getElementById('totalVerifies').textContent = config.totalVerifies.toLocaleString();
       document.getElementById('statusDot').className = 'status-dot dot-green';
-      document.getElementById('statusText').textContent = config.isPaused ? 'Protocol paused' : 'Connected to devnet';
+      const rpcUrl = await getRpcUrl();
+      const network = rpcUrl.includes('devnet') ? 'devnet' : rpcUrl.includes('testnet') ? 'testnet' : 'mainnet';
+      document.getElementById('statusText').textContent = config.isPaused ? 'Protocol paused' : `Connected to ${network}`;
       if (config.isPaused) {
         document.getElementById('statusDot').className = 'status-dot dot-red';
       }

@@ -64,6 +64,7 @@ async function hasActiveIntent(wallet) {
       }),
     });
     const json = await res.json();
+    if (json.error) throw new Error(json.error.message || 'RPC error');
     if (!json.result || json.result.length === 0) return false;
 
     const now = Math.floor(Date.now() / 1000);

@@ -36,6 +36,17 @@ pub fn handler_transfer_admin(ctx: Context<AdminAction>, new_admin: Pubkey) -> R
         config.admin == ctx.accounts.admin.key(),
         GuardError::Unauthorized
     );
+
+    // Prevent permanent lockout — zero address and system program have no private key
+    require!(
+        new_admin != Pubkey::default(),
+        GuardError::InvalidAdmin
+    );
+    require!(
+        new_admin != anchor_lang::system_program::ID,
+        GuardError::InvalidAdmin
+    );
+
     let old_admin = config.admin;
     config.admin = new_admin;
     msg!(
@@ -73,9 +84,15 @@ pub fn handler_migrate_config(ctx: Context<MigrateConfig>) -> Result<()> {
     let config_info = &ctx.accounts.config;
     let admin_key = ctx.accounts.admin.key();
 
-    // Read admin pubkey from raw data (offset 8 = discriminator, 32 bytes)
+    // Validate GuardConfig discriminator (first 8 bytes)
     let data = config_info.try_borrow_data()?;
     require!(data.len() >= 40, GuardError::Unauthorized);
+    require!(
+        data[..8] == GuardConfig::DISCRIMINATOR[..],
+        GuardError::Unauthorized
+    );
+
+    // Read admin pubkey from raw data (offset 8 = discriminator, 32 bytes)
     let stored_admin = Pubkey::try_from(&data[8..40]).map_err(|_| GuardError::Unauthorized)?;
     require!(stored_admin == admin_key, GuardError::Unauthorized);
 
@@ -91,7 +108,8 @@ pub fn handler_migrate_config(ctx: Context<MigrateConfig>) -> Result<()> {
     let current_lamports = config_info.lamports();
 
     if current_lamports < new_min_rent {
-        let diff = new_min_rent.checked_sub(current_lamports).unwrap();
+        let diff = new_min_rent.checked_sub(current_lamports)
+            .ok_or(GuardError::ArithmeticOverflow)?;
         anchor_lang::system_program::transfer(
             CpiContext::new(
                 ctx.accounts.system_program.to_account_info(),
