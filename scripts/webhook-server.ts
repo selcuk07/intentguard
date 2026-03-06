@@ -13,10 +13,20 @@
  */
 
 import express from "express";
+import { createServer } from "http";
+import { WebSocketServer, WebSocket } from "ws";
+import { parse as parseUrl } from "url";
 
 const PORT = process.env.PORT || 3000;
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
 const PROGRAM_ID = "4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7";
+const MAX_FIELD_LENGTH = 256;
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
+
+// Alert channels for admin action notifications
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "";
+const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || "";
 
 // Anchor discriminators for log matching
 const DISCRIMINATORS: Record<string, string> = {
@@ -33,6 +43,48 @@ const DISCRIMINATORS: Record<string, string> = {
 function parseInstruction(data: string): string {
   const disc = data.slice(0, 16);
   return DISCRIMINATORS[disc] || `unknown(${disc})`;
+}
+
+// ─── Admin Alert Channels ───────────────────────────────────────────
+
+async function sendAdminAlert(action: string, details: string): Promise<void> {
+  // Telegram
+  if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+    const text = `🚨 *IntentGuard ALERT*\n\n*${action}*\n\`\`\`\n${details}\n\`\`\``;
+    try {
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: TELEGRAM_CHAT_ID,
+          text,
+          parse_mode: "Markdown",
+        }),
+      });
+    } catch (err) {
+      console.error(`  Telegram alert failed: ${(err as Error).message}`);
+    }
+  }
+
+  // Discord
+  if (DISCORD_WEBHOOK_URL) {
+    try {
+      await fetch(DISCORD_WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          embeds: [{
+            title: `IntentGuard ALERT: ${action}`,
+            description: `\`\`\`\n${details}\n\`\`\``,
+            color: 0xff0000,
+            timestamp: new Date().toISOString(),
+          }],
+        }),
+      });
+    } catch (err) {
+      console.error(`  Discord alert failed: ${(err as Error).message}`);
+    }
+  }
 }
 
 // ─── Push Token Registry ────────────────────────────────────────────
@@ -112,7 +164,7 @@ function findTokenByWallet(wallet: string): TokenEntry | undefined {
 // ─── Express App ────────────────────────────────────────────────────
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
 // Push token registration endpoint
 app.post("/register", (req, res) => {
@@ -120,6 +172,18 @@ app.post("/register", (req, res) => {
 
   if (!pushToken || !wallet || !appId || !intentPda) {
     res.status(400).json({ error: "Missing required fields: pushToken, wallet, appId, intentPda" });
+    return;
+  }
+
+  // Validate field types and lengths to prevent injection/abuse
+  if (typeof pushToken !== "string" || typeof wallet !== "string" ||
+      typeof appId !== "string" || typeof intentPda !== "string") {
+    res.status(400).json({ error: "All fields must be strings" });
+    return;
+  }
+  if (pushToken.length > MAX_FIELD_LENGTH || wallet.length > MAX_FIELD_LENGTH ||
+      appId.length > MAX_FIELD_LENGTH || intentPda.length > MAX_FIELD_LENGTH) {
+    res.status(400).json({ error: "Field too long" });
     return;
   }
 
@@ -176,11 +240,13 @@ app.post("/webhook", async (req, res) => {
           `[${ts}] ${action} | sig: ${sig.slice(0, 20)}... | accounts: ${accounts.join(", ").slice(0, 60)}`
         );
 
-        // Alert on critical events
+        // Alert on critical admin events via Telegram/Discord
         if (
-          ["pause_protocol", "transfer_admin", "update_config"].includes(action)
+          ["pause_protocol", "transfer_admin", "update_config", "unpause_protocol", "migrate_config"].includes(action)
         ) {
           console.log(`  *** ALERT: Admin action detected: ${action} ***`);
+          const alertMsg = `Admin action: ${action}\nSig: ${sig}\nAccounts: ${accounts.join(", ")}`;
+          sendAdminAlert(action, alertMsg);
         }
 
         // Send push notifications for intent lifecycle events
@@ -247,8 +313,9 @@ app.get("/health", (_req, res) => {
   });
 });
 
-// Debug: list registered tokens (dev only)
+// Debug: list registered tokens (dev only — disabled in production)
 app.get("/debug/tokens", (_req, res) => {
+  if (IS_PRODUCTION) { res.status(404).json({ error: "Not found" }); return; }
   const entries = Array.from(tokenRegistry.values()).map((e) => ({
     wallet: `${e.wallet.slice(0, 8)}...`,
     appId: `${e.appId.slice(0, 8)}...`,
@@ -258,16 +325,125 @@ app.get("/debug/tokens", (_req, res) => {
   res.json({ count: entries.length, entries });
 });
 
-app.listen(PORT, () => {
-  console.log("\n=== IntentGuard Webhook + Push Notification Server ===");
+// ─── WebSocket Relay for Extension ↔ Mobile Pairing ─────────────────
+
+// Channels: channelId -> { extension?: WebSocket, mobile?: WebSocket }
+interface RelayChannel {
+  extension?: WebSocket;
+  mobile?: WebSocket;
+  createdAt: number;
+}
+
+const relayChannels = new Map<string, RelayChannel>();
+
+// Clean up stale relay channels (older than 24h)
+function cleanupStaleChannels() {
+  const cutoff = Date.now() - 86400_000;
+  for (const [id, channel] of relayChannels) {
+    if (channel.createdAt < cutoff) {
+      if (channel.extension?.readyState === WebSocket.OPEN) channel.extension.close();
+      if (channel.mobile?.readyState === WebSocket.OPEN) channel.mobile.close();
+      relayChannels.delete(id);
+    }
+  }
+}
+
+setInterval(cleanupStaleChannels, 300_000);
+
+// Debug endpoint for relay channels (dev only — disabled in production)
+app.get("/debug/channels", (_req, res) => {
+  if (IS_PRODUCTION) { res.status(404).json({ error: "Not found" }); return; }
+  const entries = Array.from(relayChannels.entries()).map(([id, ch]) => ({
+    channelId: `${id.slice(0, 8)}...`,
+    extension: ch.extension?.readyState === WebSocket.OPEN ? "connected" : "disconnected",
+    mobile: ch.mobile?.readyState === WebSocket.OPEN ? "connected" : "disconnected",
+    age: `${Math.round((Date.now() - ch.createdAt) / 1000)}s`,
+  }));
+  res.json({ count: entries.length, entries });
+});
+
+// ─── HTTP + WebSocket Server ────────────────────────────────────────
+
+const server = createServer(app);
+
+const MAX_WS_PAYLOAD = 256 * 1024; // 256KB max message size
+const MAX_CHANNEL_ID_LENGTH = 64;
+const CHANNEL_ID_REGEX = /^[a-f0-9]+$/;
+
+const wss = new WebSocketServer({ server, path: "/relay", maxPayload: MAX_WS_PAYLOAD });
+
+wss.on("connection", (ws, req) => {
+  const url = parseUrl(req.url || "", true);
+  const channelId = url.query.channel as string;
+  const role = url.query.role as string;
+
+  if (!channelId || !role || !["extension", "mobile"].includes(role)) {
+    ws.close(4000, "Missing channel or role parameter");
+    return;
+  }
+
+  // Validate channelId format and length
+  if (channelId.length > MAX_CHANNEL_ID_LENGTH || !CHANNEL_ID_REGEX.test(channelId)) {
+    ws.close(4002, "Invalid channel ID format");
+    return;
+  }
+
+  // Get or create channel
+  if (!relayChannels.has(channelId)) {
+    relayChannels.set(channelId, { createdAt: Date.now() });
+  }
+  const channel = relayChannels.get(channelId)!;
+
+  // Register this connection
+  if (role === "extension") {
+    if (channel.extension?.readyState === WebSocket.OPEN) {
+      channel.extension.close(4001, "Replaced by new connection");
+    }
+    channel.extension = ws;
+  } else {
+    if (channel.mobile?.readyState === WebSocket.OPEN) {
+      channel.mobile.close(4001, "Replaced by new connection");
+    }
+    channel.mobile = ws;
+  }
+
+  console.log(`[RELAY] ${role} connected to channel ${channelId.slice(0, 8)}...`);
+
+  // Relay messages to the other side
+  ws.on("message", (data) => {
+    const peer = role === "extension" ? channel.mobile : channel.extension;
+    if (peer && peer.readyState === WebSocket.OPEN) {
+      peer.send(data.toString());
+    }
+  });
+
+  ws.on("close", () => {
+    console.log(`[RELAY] ${role} disconnected from channel ${channelId.slice(0, 8)}...`);
+    if (role === "extension" && channel.extension === ws) {
+      channel.extension = undefined;
+    }
+    if (role === "mobile" && channel.mobile === ws) {
+      channel.mobile = undefined;
+    }
+    // Clean up empty channels
+    if (!channel.extension && !channel.mobile) {
+      relayChannels.delete(channelId);
+    }
+  });
+});
+
+server.listen(PORT, () => {
+  console.log("\n=== IntentGuard Webhook + Push + Relay Server ===");
   console.log(`Listening on http://localhost:${PORT}`);
   console.log(`Endpoints:`);
   console.log(`  POST /webhook        — Enhanced events + push notifications`);
   console.log(`  POST /webhook/raw    — Raw events (low latency)`);
   console.log(`  POST /register       — Register push token for intent`);
   console.log(`  POST /unregister     — Remove push token`);
+  console.log(`  WS   /relay          — Extension <-> Mobile encrypted relay`);
   console.log(`  GET  /health         — Health check`);
   console.log(`  GET  /debug/tokens   — List registered tokens (dev)`);
+  console.log(`  GET  /debug/channels — List active relay channels (dev)`);
   console.log(`\nMonitoring program: ${PROGRAM_ID}`);
   console.log(`\nFor local dev, expose with: ngrok http ${PORT}\n`);
 });
