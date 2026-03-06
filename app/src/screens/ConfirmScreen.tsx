@@ -8,6 +8,8 @@ import {
   QrIntentPayload,
   computeIntentHash,
   buildCommitInstruction,
+  buildRevokeInstruction,
+  findIntentPda,
 } from '../utils/intentguard';
 import { DEVNET_RPC, DEFAULT_TTL } from '../utils/constants';
 import { PublicKey } from '@solana/web3.js';
@@ -27,16 +29,18 @@ export default function ConfirmScreen({ payload, onDone, onBack }: Props) {
 
   const handleConfirm = async () => {
     try {
-      // Step 1: Biometric authentication
+      // Step 1: Biometric authentication (skip on web/unsupported)
       setStatus('authenticating');
-      const authResult = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Confirm Intent',
-        disableDeviceFallback: false,
-      });
-
-      if (!authResult.success) {
-        setStatus('preview');
-        return;
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      if (hasHardware) {
+        const authResult = await LocalAuthentication.authenticateAsync({
+          promptMessage: 'Confirm Intent',
+          disableDeviceFallback: false,
+        });
+        if (!authResult.success) {
+          setStatus('preview');
+          return;
+        }
       }
 
       // Step 2: Sign and send
@@ -44,14 +48,14 @@ export default function ConfirmScreen({ payload, onDone, onBack }: Props) {
       const wallet = await getOrCreateWallet();
       const appId = new PublicKey(payload.app);
 
-      const intentHash = computeIntentHash(
+      const intentHash = await computeIntentHash(
         appId,
         wallet.publicKey,
         payload.action,
         payload.params,
       );
 
-      const ix = buildCommitInstruction(
+      const commitIx = buildCommitInstruction(
         wallet.publicKey,
         appId,
         intentHash,
@@ -59,9 +63,18 @@ export default function ConfirmScreen({ payload, onDone, onBack }: Props) {
       );
 
       const connection = new Connection(DEVNET_RPC, 'confirmed');
-      const { blockhash } = await connection.getLatestBlockhash();
 
-      const tx = new Transaction().add(ix);
+      // Check if an existing intent PDA exists (expired or active) — revoke first
+      const [intentPda] = findIntentPda(wallet.publicKey, appId);
+      const existingPda = await connection.getAccountInfo(intentPda);
+
+      const tx = new Transaction();
+      if (existingPda) {
+        tx.add(buildRevokeInstruction(wallet.publicKey, appId));
+      }
+      tx.add(commitIx);
+
+      const { blockhash } = await connection.getLatestBlockhash();
       tx.recentBlockhash = blockhash;
       tx.feePayer = wallet.publicKey;
       tx.sign(wallet);

@@ -6,10 +6,11 @@ import { getOrCreateWallet, shortAddress } from '../utils/wallet';
 
 interface Props {
   onScanPress: () => void;
+  onTestPress?: () => void;
   onHistoryPress: () => void;
 }
 
-export default function HomeScreen({ onScanPress, onHistoryPress }: Props) {
+export default function HomeScreen({ onScanPress, onTestPress, onHistoryPress }: Props) {
   const [wallet, setWallet] = useState<Keypair | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -56,6 +57,14 @@ export default function HomeScreen({ onScanPress, onHistoryPress }: Props) {
       <Text style={styles.hint}>
         Scan the QR code shown on your dApp to confirm a transaction
       </Text>
+
+      {/* Test Intent */}
+      {onTestPress && (
+        <TouchableOpacity style={styles.testButton} onPress={onTestPress}>
+          <Ionicons name="flask-outline" size={20} color="#f59e0b" />
+          <Text style={styles.testButtonText}>Test Intent (Devnet)</Text>
+        </TouchableOpacity>
+      )}
 
       {/* History */}
       <TouchableOpacity style={styles.historyButton} onPress={onHistoryPress}>
@@ -142,6 +151,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
     paddingHorizontal: 20,
+  },
+  testButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#f59e0b',
+    width: '100%',
+  },
+  testButtonText: {
+    color: '#f59e0b',
+    fontSize: 16,
+    fontWeight: '600',
   },
   historyButton: {
     flexDirection: 'row',

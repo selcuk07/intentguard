@@ -1,15 +1,43 @@
 import { Keypair } from '@solana/web3.js';
-import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import { Buffer } from 'buffer';
 
 const WALLET_KEY = 'intentguard_wallet';
 
+// Storage abstraction: SecureStore on native, localStorage on web
+async function getItem(key: string): Promise<string | null> {
+  if (Platform.OS === 'web') {
+    return localStorage.getItem(key);
+  }
+  const SecureStore = await import('expo-secure-store');
+  return SecureStore.getItemAsync(key);
+}
+
+async function setItem(key: string, value: string): Promise<void> {
+  if (Platform.OS === 'web') {
+    localStorage.setItem(key, value);
+    return;
+  }
+  const SecureStore = await import('expo-secure-store');
+  await SecureStore.setItemAsync(key, value);
+}
+
+async function deleteItem(key: string): Promise<void> {
+  if (Platform.OS === 'web') {
+    localStorage.removeItem(key);
+    return;
+  }
+  const SecureStore = await import('expo-secure-store');
+  await SecureStore.deleteItemAsync(key);
+}
+
 /**
  * Get or create a device-local keypair.
- * Stored encrypted in Expo SecureStore (Keychain on iOS, EncryptedSharedPrefs on Android).
+ * Native: Expo SecureStore (Keychain / EncryptedSharedPrefs)
+ * Web: localStorage (for testing only)
  */
 export async function getOrCreateWallet(): Promise<Keypair> {
-  const existing = await SecureStore.getItemAsync(WALLET_KEY);
+  const existing = await getItem(WALLET_KEY);
 
   if (existing) {
     const secret = Uint8Array.from(JSON.parse(existing));
@@ -17,10 +45,7 @@ export async function getOrCreateWallet(): Promise<Keypair> {
   }
 
   const keypair = Keypair.generate();
-  await SecureStore.setItemAsync(
-    WALLET_KEY,
-    JSON.stringify(Array.from(keypair.secretKey)),
-  );
+  await setItem(WALLET_KEY, JSON.stringify(Array.from(keypair.secretKey)));
   return keypair;
 }
 
@@ -31,25 +56,20 @@ export async function importWallet(secretKeyData: string): Promise<Keypair> {
   let secret: Uint8Array;
 
   try {
-    // Try JSON array format first
     const arr = JSON.parse(secretKeyData);
     secret = Uint8Array.from(arr);
   } catch {
-    // Try base58 (raw secret key)
     const bs58 = await import('bs58');
     secret = bs58.default.decode(secretKeyData);
   }
 
   const keypair = Keypair.fromSecretKey(secret);
-  await SecureStore.setItemAsync(
-    WALLET_KEY,
-    JSON.stringify(Array.from(keypair.secretKey)),
-  );
+  await setItem(WALLET_KEY, JSON.stringify(Array.from(keypair.secretKey)));
   return keypair;
 }
 
 export async function deleteWallet(): Promise<void> {
-  await SecureStore.deleteItemAsync(WALLET_KEY);
+  await deleteItem(WALLET_KEY);
 }
 
 export function shortAddress(address: string): string {

@@ -20,3 +20,9 @@ idl-build = ["anchor-lang/idl-build"]
 [dependencies]
 anchor-lang = "0.32.1"
 solana-sha256-hasher = "2.3.0"
+
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = [
+    'cfg(feature, values("anchor-debug", "custom-heap", "custom-panic"))',
+    'cfg(target_os, values("solana"))',
+] }

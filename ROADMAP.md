@@ -138,16 +138,16 @@
 - [x] Scope defined: on-chain program + SDK + CPI crate
 - [ ] Immunefi listing live (pending submission)
 
-## Phase 7 — Mainnet + SDK v1.0 (Week 14–16)
+## Phase 7 — Mainnet + SDK v1.0 (Week 14–16) — IN PROGRESS
 
 ### Mainnet Deployment
 - [ ] Deploy program to Solana mainnet-beta
 - [ ] Multisig upgrade authority (Squads)
 - [ ] Monitor: Helius webhooks for commit/verify events
-- [ ] Dashboard: real-time stats (commits, verifies, unique users)
+- [x] Dashboard: real-time stats (commits, verifies, verify rate, protocol status)
 
 ### SDK v1.0
-- [ ] Full API docs (TypeDoc)
+- [x] Full API docs (TypeDoc — landing/api-docs/)
 - [ ] Integration examples repo
 - [ ] Video tutorial: "Add 2FA to your Solana dApp in 10 minutes"
 

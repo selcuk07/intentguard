@@ -25,37 +25,37 @@ Solana transactions today have a single point of failure: the frontend.
 IntentGuard introduces a commit-reveal pattern with device separation:
 
 ```
-┌──────────────────┐                 ┌──────────────────┐
-│   Trusted Device  │                 │    Browser/dApp   │
-│  (Mobile / CLI)   │                 │   (Untrusted)     │
-├──────────────────┤                 ├──────────────────┤
-│                    │                 │                    │
-│  1. User sees:     │                 │                    │
-│     "Swap 100 USDC │                 │                    │
-│      for SOL on    │                 │                    │
-│      Jupiter"      │                 │                    │
-│                    │                 │                    │
-│  2. Confirms →     │                 │                    │
-│     TX1: commit    │──── hash ────►  │  3. Detects commit │
-│     intent hash    │   on-chain      │     on-chain       │
-│                    │                 │                    │
-│                    │                 │  4. Executes TX2:  │
-│                    │                 │     swap + verify  │
-│                    │                 │     intent         │
-│                    │                 │                    │
-│                    │                 │  ✅ Hash matches → │
-│                    │                 │     TX succeeds    │
-│                    │                 │                    │
-│                    │                 │  ❌ Hash mismatch →│
-│                    │                 │     TX reverts     │
-└──────────────────┘                 └──────────────────┘
++--------------------+                 +--------------------+
+|   Trusted Device   |                 |    Browser/dApp    |
+|  (Mobile / CLI)    |                 |   (Untrusted)      |
++--------------------+                 +--------------------+
+|                    |                 |                    |
+|  1. User sees:     |                 |                    |
+|     "Swap 100 USDC |                 |                    |
+|      for SOL on    |                 |                    |
+|      Jupiter"      |                 |                    |
+|                    |                 |                    |
+|  2. Confirms ->    |                 |                    |
+|     TX1: commit    |---- hash ---->  |  3. Detects commit |
+|     intent hash    |   on-chain      |     on-chain       |
+|                    |                 |                    |
+|                    |                 |  4. Executes TX2:  |
+|                    |                 |     swap + verify  |
+|                    |                 |     intent         |
+|                    |                 |                    |
+|                    |                 |  Hash matches ->   |
+|                    |                 |     TX succeeds    |
+|                    |                 |                    |
+|                    |                 |  Hash mismatch ->  |
+|                    |                 |     TX reverts     |
++--------------------+                 +--------------------+
 ```
 
 **Even if the browser is fully compromised after step 2, the attacker cannot change the transaction parameters.** The hash is already locked on-chain from the trusted device.
 
 ## How It Works
 
-### 1. Commit (Trusted Device → On-chain)
+### 1. Commit (Trusted Device -> On-chain)
 
 User confirms intent parameters on their mobile app or CLI. The app computes a SHA-256 hash and sends a `commit_intent` transaction to Solana.
 
@@ -79,7 +79,7 @@ await program.methods
   .rpc();
 ```
 
-### 2. Verify (Browser → On-chain)
+### 2. Verify (Browser -> On-chain)
 
 The dApp detects the on-chain IntentCommit PDA and includes a `verify_intent` call in the same transaction as the target action. IntentGuard checks the hash and closes the PDA.
 
@@ -90,8 +90,8 @@ await program.methods
   .accounts({ ... })
   .rpc();
 
-// If hash matches → PDA closed, rent refunded, dApp proceeds
-// If hash doesn't match → TX reverts, funds are safe
+// If hash matches -> PDA closed, rent refunded, dApp proceeds
+// If hash doesn't match -> TX reverts, funds are safe
 ```
 
 ### 3. Revoke (Optional)
@@ -107,7 +107,7 @@ await program.methods
 
 ## Architecture
 
-### On-chain Program
+### On-chain Program (~530 lines Rust)
 
 | Instruction | Description |
 |---|---|
@@ -115,10 +115,11 @@ await program.methods
 | `commit_intent` | Lock intent hash on-chain (TX1 from trusted device) |
 | `verify_intent` | Verify hash match and close PDA (TX2 from dApp) |
 | `revoke_intent` | Cancel pending intent, refund rent |
-| `pause_protocol` | Admin: block new commits |
+| `pause_protocol` | Admin: block new commits (emergency) |
 | `unpause_protocol` | Admin: resume commits |
 | `transfer_admin` | Admin: change authority |
-| `update_config` | Admin: tune spam protection |
+| `update_config` | Admin: tune spam protection (min_balance) |
+| `migrate_config` | Admin: safe realloc for config PDA upgrades |
 
 ### PDA Structure
 
@@ -137,7 +138,16 @@ One active intent per user per app. Automatically closed on verification.
 
 **GuardConfig** — `seeds: [b"config"]`
 
-Global protocol state with admin controls and lifetime counters.
+Global protocol state with admin controls, lifetime counters, and spam protection settings.
+
+| Field | Type | Description |
+|---|---|---|
+| `admin` | `Pubkey` | Protocol authority |
+| `is_paused` | `bool` | Emergency pause flag |
+| `total_commits` | `u64` | Lifetime commit counter |
+| `total_verifies` | `u64` | Lifetime verify counter |
+| `min_balance` | `u64` | Minimum SOL balance to commit (spam protection) |
+| `bump` | `u8` | PDA bump |
 
 ### Security Properties
 
@@ -145,9 +155,21 @@ Global protocol state with admin controls and lifetime counters.
 |---|---|
 | Frontend compromise (after commit) | Hash is locked on-chain — changing params breaks the hash |
 | Replay attack | PDA is closed after verification — can't reuse |
-| Stale intent | TTL enforced (30s–1h, default 5min) |
+| Stale intent | TTL enforced (30s-1h, default 5min) |
 | Cross-app attack | Per-app PDA isolation — Jupiter intent can't verify on Raydium |
 | Account theft | `has_one = user` constraint — only owner can verify/revoke |
+| Spam / dust attacks | Configurable min_balance (default 0.01 SOL), admin-tunable up to 1 SOL |
+| Protocol compromise | Emergency pause, admin transfer, rate limiting (1 intent per user per app) |
+
+## Devnet Deployment
+
+IntentGuard is live on Solana devnet:
+
+| Resource | Address |
+|---|---|
+| **Program** | `4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7` |
+| **IDL** | `Dvn2qXEn4cvPW4fGEwjJ723gcvSdfooS2AVyqmyZxRKW` |
+| **Config PDA** | `6atm7ijvFwoRnDsJKz6yaYbKBMBuqvTXqHTtbNUieKCj` |
 
 ## Integration Guide
 
@@ -169,8 +191,10 @@ await sendTransaction(tx);
 Call IntentGuard via CPI from within your program for tighter integration.
 
 ```rust
+use intentguard_cpi::{verify_intent_cpi, VerifyAccounts};
+
 // In your program's instruction handler:
-intent_guard::cpi::verify_intent(cpi_ctx, intent_hash)?;
+verify_intent_cpi(accounts, intent_hash)?;
 // If we reach here, intent was verified
 proceed_with_swap(...)?;
 ```
@@ -189,21 +213,54 @@ The only requirement: both the commit side (mobile/CLI) and verify side (browser
 
 ```
 intentguard/
-├── programs/intent-guard/     # Anchor program
+├── programs/intent-guard/       # Anchor program (9 instructions, ~530 lines)
 │   └── src/
-│       ├── lib.rs             # Program entrypoint (9 instructions)
-│       ├── state.rs           # IntentCommit, GuardConfig
-│       ├── errors.rs          # Error codes
-│       └── instructions/      # Instruction handlers
-├── packages/sdk/              # TypeScript SDK
+│       ├── lib.rs               # Program entrypoint
+│       ├── state.rs             # IntentCommit, GuardConfig
+│       ├── errors.rs            # Error codes
+│       └── instructions/        # Instruction handlers
+│           ├── initialize.rs    # Protocol setup
+│           ├── commit_intent.rs # Lock intent hash
+│           ├── verify_intent.rs # Verify + close PDA
+│           ├── revoke_intent.rs # Cancel intent
+│           └── admin.rs         # Pause, unpause, transfer, config
+├── packages/
+│   ├── sdk/                     # TypeScript SDK (npm: intentguard-sdk)
+│   │   └── src/
+│   │       ├── client.ts        # computeIntentHash, getIntentCommit
+│   │       ├── instructions.ts  # Instruction builders (no Anchor dep)
+│   │       ├── pdas.ts          # PDA derivation helpers
+│   │       ├── constants.ts     # Program ID, defaults
+│   │       └── react.tsx        # <IntentGuardButton /> component
+│   └── cpi/                     # Rust CPI crate (crates.io: intentguard-cpi)
+│       └── src/lib.rs           # CPI helpers + PDA finders
+├── cli/                         # CLI tool (commit, status, revoke)
+│   └── src/commands/
+├── app/                         # React Native mobile app (Expo)
 │   └── src/
-│       ├── client.ts          # computeIntentHash, getIntentCommit
-│       ├── pdas.ts            # PDA derivation helpers
-│       └── constants.ts       # Program ID, defaults
+│       ├── screens/             # Scan, Confirm, Home
+│       └── utils/
+├── extension/                   # Chrome extension (Manifest V3)
+│   └── src/                     # Popup, content script, background
+├── examples/                    # Integration examples
+│   ├── full-flow.ts             # Commit -> verify -> close
+│   ├── protected-swap.ts        # Jupiter swap with IntentGuard
+│   ├── protected-transfer.ts    # SPL token transfer with IntentGuard
+│   └── cpi-integration.rs       # Rust CPI example
+├── landing/                     # GitHub Pages site
+│   ├── index.html               # Landing page
+│   ├── dashboard.html           # Live devnet stats dashboard
+│   └── api-docs/                # TypeDoc API reference
 ├── tests/
-│   └── intent-guard.ts        # 29 tests (full coverage)
-├── Anchor.toml
-└── README.md
+│   └── intent-guard.ts          # 29 integration tests
+├── trident-tests/               # Trident fuzzing (8 flows, ~1M instructions)
+│   └── fuzz_0/test_fuzz.rs
+├── scripts/
+│   └── devnet-demo.ts           # Live devnet demo
+├── THREAT-MODEL.md              # 12 attack vectors analyzed
+├── SECURITY.md                  # Bug bounty policy (up to $50K)
+├── GRANT-APPLICATION.md         # Solana grant application
+└── Anchor.toml
 ```
 
 ## Development
@@ -221,7 +278,7 @@ intentguard/
 # Build the program (requires WSL on Windows for BPF compilation)
 anchor build
 
-# Build with dev-testing feature (relaxed TTL for tests)
+# Build with dev-testing feature (relaxed TTL + min_balance for tests)
 anchor build -- --features dev-testing
 ```
 
@@ -234,7 +291,7 @@ anchor test
 # Skip build if already compiled
 anchor test --skip-build
 
-# Run fuzz tests (requires nightly)
+# Run fuzz tests (requires nightly Rust)
 cd trident-tests && cargo +nightly run --bin fuzz_0
 ```
 
@@ -249,6 +306,8 @@ cargo update -p proc-macro-crate@3.5.0 --precise 3.2.0
 
 ## SDK
 
+### TypeScript SDK
+
 ```bash
 npm install intentguard-sdk
 ```
@@ -260,7 +319,32 @@ import {
   findIntentCommitPda,
   findConfigPda,
   INTENT_GUARD_PROGRAM_ID,
+  // Instruction builders (no Anchor dependency)
+  createCommitIntentInstruction,
+  createVerifyIntentInstruction,
+  createRevokeIntentInstruction,
+  createPauseProtocolInstruction,
+  createUnpauseProtocolInstruction,
+  createTransferAdminInstruction,
 } from 'intentguard-sdk';
+
+// React component
+import { IntentGuardButton } from 'intentguard-sdk/react';
+```
+
+### Rust CPI Crate
+
+```toml
+[dependencies]
+intentguard-cpi = "0.2"
+```
+
+```rust
+use intentguard_cpi::{
+    commit_intent_cpi, verify_intent_cpi, revoke_intent_cpi,
+    pause_protocol_cpi, unpause_protocol_cpi, transfer_admin_cpi,
+    find_intent_commit_pda, find_config_pda,
+};
 ```
 
 ## Security
@@ -268,23 +352,39 @@ import {
 IntentGuard takes security seriously. See [SECURITY.md](SECURITY.md) for our bug bounty policy.
 
 - **Threat model:** 12 attack vectors analyzed — [THREAT-MODEL.md](THREAT-MODEL.md)
-- **Fuzzing:** Trident — 8 flows, 1M+ instructions, 0 violations
+- **Fuzzing:** Trident — 8 flows, 5K iterations, ~1M instructions, 0 violations
 - **Tests:** 29 integration tests covering all instructions and attack vectors
+- **Admin controls:** Emergency pause, admin transfer, configurable spam protection
+- **Spam protection:** Configurable min_balance (0.01 SOL default, max 1 SOL)
+- **Rate limiting:** 1 active intent per user per app (PDA init constraint)
 - **Bug bounty:** Up to $50K for critical vulnerabilities
 
 Report vulnerabilities to **security@intentguard.dev**.
 
+## Live Dashboard
+
+Real-time protocol stats are available at the [IntentGuard Dashboard](https://selcuk07.github.io/intentguard/dashboard.html):
+
+- Total commits and verifies
+- Verify rate
+- Protocol pause status
+- Intent lookup by wallet
+
 ## Roadmap
 
-- [x] On-chain program (9 instructions)
-- [x] TypeScript SDK (npm: `intentguard-sdk`)
-- [x] Rust CPI crate (crates.io: `intentguard-cpi`)
-- [x] Test suite (29 tests + Trident fuzzing)
-- [x] Mobile app MVP (React Native)
-- [x] Browser extension MVP (Chrome)
+- [x] On-chain program (9 instructions, ~530 lines)
+- [x] TypeScript SDK v0.2.0 (npm: `intentguard-sdk`)
+- [x] Rust CPI crate v0.2.0 (crates.io: `intentguard-cpi`)
 - [x] CLI commit tool
-- [x] Devnet deployment
-- [x] Bug bounty program
+- [x] React Native mobile app (Expo)
+- [x] Chrome browser extension
+- [x] React `<IntentGuardButton />` component
+- [x] Devnet deployment + live demo
+- [x] Test suite (29 tests + Trident fuzzing)
+- [x] Threat model (12 attack vectors)
+- [x] Bug bounty program (up to $50K)
+- [x] Live dashboard + API docs
+- [x] First integration: [ACELaunch](https://github.com/selcuk07/acelaunch) (IntentProof)
 - [ ] External audit
 - [ ] Mainnet launch
 

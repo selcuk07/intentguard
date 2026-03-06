@@ -1,6 +1,5 @@
-import { Connection, Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction } from '@solana/web3.js';
+import { PublicKey, SystemProgram, TransactionInstruction } from '@solana/web3.js';
 import { Buffer } from 'buffer';
-import { createHash } from 'crypto';
 import { INTENT_GUARD_PROGRAM_ID } from './constants';
 
 export function findConfigPda(): [PublicKey, number] {
@@ -17,19 +16,21 @@ export function findIntentPda(user: PublicKey, appId: PublicKey): [PublicKey, nu
   );
 }
 
-export function computeIntentHash(
+export async function computeIntentHash(
   appId: PublicKey,
   user: PublicKey,
   action: string,
   params: Record<string, string>,
-): Buffer {
+): Promise<Buffer> {
   const sorted = JSON.stringify(params, Object.keys(params).sort());
-  const hash = createHash('sha256');
-  hash.update(appId.toBuffer());
-  hash.update(user.toBuffer());
-  hash.update(Buffer.from(action));
-  hash.update(Buffer.from(sorted));
-  return hash.digest();
+  const data = Buffer.concat([
+    appId.toBuffer(),
+    user.toBuffer(),
+    Buffer.from(action),
+    Buffer.from(sorted),
+  ]);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Buffer.from(hashBuffer);
 }
 
 /**
@@ -66,6 +67,30 @@ export function buildCommitInstruction(
       { pubkey: configPda, isSigner: false, isWritable: true },
       { pubkey: user, isSigner: true, isWritable: true },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data,
+  });
+}
+
+/**
+ * Build a revoke_intent instruction to close an existing PDA.
+ */
+export function buildRevokeInstruction(
+  user: PublicKey,
+  appId: PublicKey,
+): TransactionInstruction {
+  const [intentPda] = findIntentPda(user, appId);
+
+  // Anchor discriminator for revoke_intent
+  const discriminator = Buffer.from([42, 248, 79, 132, 107, 96, 193, 153]);
+
+  const data = Buffer.concat([discriminator, appId.toBuffer()]);
+
+  return new TransactionInstruction({
+    programId: INTENT_GUARD_PROGRAM_ID,
+    keys: [
+      { pubkey: intentPda, isSigner: false, isWritable: true },
+      { pubkey: user, isSigner: true, isWritable: true },
     ],
     data,
   });

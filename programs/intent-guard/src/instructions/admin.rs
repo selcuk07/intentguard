@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::state::GuardConfig;
+use crate::state::{GuardConfig, DEFAULT_MIN_BALANCE};
 use crate::errors::GuardError;
 
 /// Maximum min_balance admin can set (1 SOL — prevents lockout)
@@ -66,18 +66,22 @@ pub fn handler_update_config(
     Ok(())
 }
 
-/// Migrate GuardConfig to new size (adds min_balance field).
-/// Only needed once after program upgrade. Uses UncheckedAccount
-/// because the old account can't deserialize into the new struct.
+/// Migrate GuardConfig: realloc + fix data layout.
+/// Handles the case where bump was at offset 57 (old layout without min_balance)
+/// and needs to move to offset 65 (new layout with min_balance at 57-64).
 pub fn handler_migrate_config(ctx: Context<MigrateConfig>) -> Result<()> {
     let config_info = &ctx.accounts.config;
     let admin_key = ctx.accounts.admin.key();
 
     // Read admin pubkey from raw data (offset 8 = discriminator, 32 bytes)
     let data = config_info.try_borrow_data()?;
-    require!(data.len() >= 40, GuardError::Unauthorized); // 8 disc + 32 admin
+    require!(data.len() >= 40, GuardError::Unauthorized);
     let stored_admin = Pubkey::try_from(&data[8..40]).map_err(|_| GuardError::Unauthorized)?;
     require!(stored_admin == admin_key, GuardError::Unauthorized);
+
+    // Read bump from old offset (57) if new offset (65) is zero
+    let old_bump = if data.len() > 57 { data[57] } else { 0 };
+    let new_bump = if data.len() > 65 { data[65] } else { 0 };
     drop(data);
 
     // Realloc to new size
@@ -86,7 +90,6 @@ pub fn handler_migrate_config(ctx: Context<MigrateConfig>) -> Result<()> {
     let new_min_rent = rent.minimum_balance(new_size);
     let current_lamports = config_info.lamports();
 
-    // Transfer additional rent if needed (before realloc)
     if current_lamports < new_min_rent {
         let diff = new_min_rent.checked_sub(current_lamports).unwrap();
         anchor_lang::system_program::transfer(
@@ -101,7 +104,19 @@ pub fn handler_migrate_config(ctx: Context<MigrateConfig>) -> Result<()> {
         )?;
     }
 
-    config_info.realloc(new_size, false)?;
+    config_info.resize(new_size)?;
+
+    // Fix data layout: if bump at new offset is 0 but old offset has a value,
+    // move bump to correct position and set default min_balance
+    if new_bump == 0 && old_bump != 0 {
+        let mut data = config_info.try_borrow_mut_data()?;
+        // Write default min_balance (0.01 SOL) at offset 57-64
+        let min_bal = DEFAULT_MIN_BALANCE.to_le_bytes();
+        data[57..65].copy_from_slice(&min_bal);
+        // Write bump at offset 65
+        data[65] = old_bump;
+        msg!("IntentGuard: fixed bump {} from offset 57 -> 65", old_bump);
+    }
 
     msg!(
         "IntentGuard: config migrated by {}, new size={}",
@@ -117,6 +132,7 @@ pub struct AdminAction<'info> {
         mut,
         seeds = [b"config"],
         bump = config.bump,
+        has_one = admin,
     )]
     pub config: Account<'info, GuardConfig>,
 
