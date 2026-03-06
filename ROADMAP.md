@@ -89,9 +89,9 @@
 - [x] Content script: auto-detect Solana dApps, inject floating badge
 - [x] Pulse animation for active intents
 - [x] getProgramAccounts with discriminator filter
-- [ ] Intercept wallet `signTransaction` calls (block until verified)
+- [x] Intercept wallet `signTransaction` calls (block until verified)
 - [x] Push notification to mobile app
-- [ ] Bypass list: trusted dApps that don't need 2FA
+- [x] Bypass list: trusted dApps that don't need 2FA
 
 ### Extension ↔ Mobile Pairing
 - [ ] One-time QR pairing (like WhatsApp Web)

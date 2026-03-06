@@ -261,5 +261,37 @@ document.getElementById('appInput').addEventListener('change', (e) => {
   chrome.storage.local.set({ appId: e.target.value.trim() });
 });
 
+// Bypass list management
+async function loadBypassList() {
+  const container = document.getElementById('bypassList');
+  const response = await chrome.runtime.sendMessage({ type: 'GET_BYPASS_LIST' });
+  const list = response.list || [];
+
+  if (list.length === 0) {
+    container.innerHTML = '<div class="empty" style="padding: 8px 0; font-size: 12px; color: #64748b;">No trusted sites</div>';
+    return;
+  }
+
+  let html = '';
+  for (const origin of list) {
+    html += `
+      <div class="intent-row" style="margin-bottom: 4px;">
+        <span class="intent-value" style="font-size: 12px;">${origin}</span>
+        <button class="btn btn-secondary" style="width: auto; padding: 4px 10px; margin: 0; font-size: 11px;" data-origin="${origin}">Remove</button>
+      </div>
+    `;
+  }
+  container.innerHTML = html;
+
+  // Add remove handlers
+  container.querySelectorAll('button[data-origin]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      await chrome.runtime.sendMessage({ type: 'REMOVE_BYPASS', origin: btn.dataset.origin });
+      loadBypassList();
+    });
+  });
+}
+
 // Init
 fetchProtocolStats();
+loadBypassList();

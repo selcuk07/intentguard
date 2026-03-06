@@ -59,3 +59,173 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
+
+/* ─── Transaction Intercept Overlay ─────────────────────────────── */
+
+#ig-intercept-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ig-overlay-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+}
+
+.ig-overlay-card {
+  position: relative;
+  background: #0f172a;
+  border: 1px solid #1f2d47;
+  border-radius: 16px;
+  width: 420px;
+  max-width: 90vw;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  font-family: 'Inter', -apple-system, sans-serif;
+  color: #f1f5f9;
+  overflow: hidden;
+}
+
+.ig-overlay-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 24px;
+  background: #111827;
+  border-bottom: 1px solid #1f2d47;
+}
+
+.ig-overlay-shield {
+  font-size: 22px;
+}
+
+.ig-overlay-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.ig-overlay-body {
+  padding: 20px 24px;
+}
+
+.ig-overlay-desc {
+  font-size: 14px;
+  color: #94a3b8;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.ig-overlay-detail {
+  background: #1a2236;
+  border: 1px solid #1f2d47;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.ig-overlay-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 4px 0;
+}
+
+.ig-overlay-label {
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 11px;
+}
+
+.ig-overlay-value {
+  color: #f1f5f9;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+
+.ig-overlay-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 10px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #10b981;
+}
+
+.ig-overlay-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(16, 185, 129, 0.3);
+  border-top-color: #10b981;
+  border-radius: 50%;
+  animation: ig-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes ig-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ig-overlay-hint {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.ig-overlay-actions {
+  display: flex;
+  gap: 8px;
+  padding: 16px 24px;
+  border-top: 1px solid #1f2d47;
+  background: #111827;
+}
+
+.ig-btn {
+  flex: 1;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Inter', -apple-system, sans-serif;
+  transition: opacity 0.15s;
+}
+
+.ig-btn:hover {
+  opacity: 0.85;
+}
+
+.ig-btn-cancel {
+  background: #ef4444;
+  color: #fff;
+}
+
+.ig-btn-skip {
+  background: #1e293b;
+  color: #f59e0b;
+  border: 1px solid #334155;
+}
+
+.ig-btn-bypass {
+  background: #1e293b;
+  color: #94a3b8;
+  border: 1px solid #334155;
+}

@@ -30,7 +30,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["icons/*"],
+      "resources": ["icons/*", "src/injected.js"],
       "matches": ["<all_urls>"]
     }
   ]
