@@ -12,6 +12,9 @@ intent_guard = "4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7"
 [programs.devnet]
 intent_guard = "4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7"
 
+[programs.mainnet]
+intent_guard = "4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7"
+
 [registry]
 url = "https://api.apr.dev"
 
@@ -20,4 +23,4 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "npx ts-mocha -p ./tsconfig.json -t 300000 tests/**/*.ts"
+test = "npx ts-mocha -p ./tsconfig.json -t 300000 tests/*.ts tests/security/*.ts"

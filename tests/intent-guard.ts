@@ -563,7 +563,7 @@ describe('intent-guard', () => {
             .accounts({ config: configPda, admin: user.publicKey })
             .signers([user])
             .rpc(),
-        'Unauthorized',
+        'ConstraintHasOne',
       );
     });
 
@@ -621,7 +621,7 @@ describe('intent-guard', () => {
             .accounts({ config: configPda, admin: rando.publicKey })
             .signers([rando])
             .rpc(),
-        'Unauthorized',
+        'ConstraintHasOne',
       );
     });
 
@@ -642,7 +642,7 @@ describe('intent-guard', () => {
             .pauseProtocol()
             .accounts({ config: configPda, admin: admin.publicKey })
             .rpc(),
-        'Unauthorized',
+        'ConstraintHasOne',
       );
     });
 
@@ -690,7 +690,7 @@ describe('intent-guard', () => {
             .accounts({ config: configPda, admin: rando.publicKey })
             .signers([rando])
             .rpc(),
-        'Unauthorized',
+        'ConstraintHasOne',
       );
     });
 
