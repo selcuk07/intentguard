@@ -12,6 +12,7 @@ import {
   findIntentPda,
 } from '../utils/intentguard';
 import { lookupApp, AppInfo } from '../utils/app-registry';
+import { registerIntentForNotifications } from '../utils/notifications';
 import { DEVNET_RPC, DEFAULT_TTL } from '../utils/constants';
 import { PublicKey } from '@solana/web3.js';
 
@@ -94,6 +95,13 @@ export default function ConfirmScreen({ payload, onDone, onBack }: Props) {
 
       setTxSig(sig);
       setStatus('success');
+
+      // Register for push notifications on this intent (best-effort)
+      registerIntentForNotifications(
+        wallet.publicKey.toBase58(),
+        payload.app,
+        intentPda.toBase58(),
+      );
     } catch (err: unknown) {
       setError((err as Error).message);
       setStatus('error');

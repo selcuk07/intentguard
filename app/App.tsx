@@ -1,11 +1,12 @@
 import './src/utils/polyfills';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import HomeScreen from './src/screens/HomeScreen';
 import ScanScreen from './src/screens/ScanScreen';
 import ConfirmScreen from './src/screens/ConfirmScreen';
 import { QrIntentPayload } from './src/utils/intentguard';
+import { setupNotificationHandlers, registerForPushNotifications } from './src/utils/notifications';
 
 const TEST_PAYLOAD: QrIntentPayload = {
   protocol: 'intentguard',
@@ -29,6 +30,11 @@ type Screen = 'home' | 'scan' | 'confirm';
 export default function App() {
   const [screen, setScreen] = useState<Screen>('home');
   const [payload, setPayload] = useState<QrIntentPayload | null>(null);
+
+  useEffect(() => {
+    setupNotificationHandlers();
+    registerForPushNotifications();
+  }, []);
 
   const handleScanned = (p: QrIntentPayload) => {
     setPayload(p);

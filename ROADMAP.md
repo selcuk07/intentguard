@@ -41,7 +41,7 @@
 - [x] Intent confirmation screen (human-readable params)
 - [x] Embedded keypair with biometric unlock (expo-secure-store + expo-local-authentication)
 - [x] TX signing + submission to Solana RPC
-- [ ] Push notification when intent is verified or expires
+- [x] Push notification when intent is verified or expires
 - [ ] TestFlight / Play Store beta
 
 ### QR Protocol
@@ -90,7 +90,7 @@
 - [x] Pulse animation for active intents
 - [x] getProgramAccounts with discriminator filter
 - [ ] Intercept wallet `signTransaction` calls (block until verified)
-- [ ] Push notification to mobile app
+- [x] Push notification to mobile app
 - [ ] Bypass list: trusted dApps that don't need 2FA
 
 ### Extension ↔ Mobile Pairing
