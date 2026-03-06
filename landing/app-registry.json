@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "updatedAt": "2026-03-06T00:00:00Z",
+  "apps": {
+    "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4": {
+      "name": "Jupiter",
+      "icon": "https://jup.ag/favicon.ico",
+      "website": "https://jup.ag",
+      "verified": true,
+      "category": "DEX",
+      "description": "Jupiter Aggregator — Best swap rates on Solana"
+    },
+    "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8": {
+      "name": "Raydium",
+      "icon": "https://raydium.io/favicon.ico",
+      "website": "https://raydium.io",
+      "verified": true,
+      "category": "DEX",
+      "description": "Raydium AMM — Liquidity and swaps"
+    },
+    "TSWAPaqyCSx2KABk68Shruf4rp7CxcNi8hAsbdwmHbN": {
+      "name": "Tensor",
+      "icon": "https://tensor.trade/favicon.ico",
+      "website": "https://tensor.trade",
+      "verified": true,
+      "category": "NFT",
+      "description": "Tensor — NFT marketplace"
+    },
+    "M2mx93ekt1fmXSVkTrUL9xVFHkmME8HTUi5Cyc5aF7K": {
+      "name": "Magic Eden",
+      "icon": "https://magiceden.io/favicon.ico",
+      "website": "https://magiceden.io",
+      "verified": true,
+      "category": "NFT",
+      "description": "Magic Eden — NFT marketplace"
+    },
+    "MarBmsSgKXdrN1egZf5sqe1TMai9K1rChYNDJgjq7aD": {
+      "name": "Marinade",
+      "icon": "https://marinade.finance/favicon.ico",
+      "website": "https://marinade.finance",
+      "verified": true,
+      "category": "Staking",
+      "description": "Marinade Finance — Liquid staking"
+    },
+    "PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY": {
+      "name": "Phoenix",
+      "icon": "https://phoenix.trade/favicon.ico",
+      "website": "https://phoenix.trade",
+      "verified": true,
+      "category": "DEX",
+      "description": "Phoenix — On-chain order book"
+    },
+    "DjVE6JNiYqPL2QXyCUUh8rNjHrbz9hXHNYt99MQ59qw1": {
+      "name": "Orca",
+      "icon": "https://orca.so/favicon.ico",
+      "website": "https://orca.so",
+      "verified": true,
+      "category": "DEX",
+      "description": "Orca — Concentrated liquidity AMM"
+    },
+    "4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7": {
+      "name": "IntentGuard",
+      "icon": "https://selcuk07.github.io/intentguard/favicon.png",
+      "website": "https://selcuk07.github.io/intentguard",
+      "verified": true,
+      "category": "Security",
+      "description": "IntentGuard — Solana 2FA protocol"
+    }
+  }
+}

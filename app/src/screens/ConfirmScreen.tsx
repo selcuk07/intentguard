@@ -11,6 +11,7 @@ import {
   buildRevokeInstruction,
   findIntentPda,
 } from '../utils/intentguard';
+import { lookupApp, AppInfo } from '../utils/app-registry';
 import { DEVNET_RPC, DEFAULT_TTL } from '../utils/constants';
 import { PublicKey } from '@solana/web3.js';
 
@@ -26,6 +27,15 @@ export default function ConfirmScreen({ payload, onDone, onBack }: Props) {
   const [status, setStatus] = useState<Status>('preview');
   const [txSig, setTxSig] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
+  const [registryLoaded, setRegistryLoaded] = useState(false);
+
+  useEffect(() => {
+    lookupApp(payload.app).then((info) => {
+      setAppInfo(info);
+      setRegistryLoaded(true);
+    });
+  }, [payload.app]);
 
   const handleConfirm = async () => {
     try {
@@ -101,17 +111,41 @@ export default function ConfirmScreen({ payload, onDone, onBack }: Props) {
         <Ionicons name="shield-checkmark" size={56} color="#10b981" />
         <Text style={styles.title}>Confirm Intent</Text>
 
+        {/* Anti-phishing: unverified app warning */}
+        {registryLoaded && !appInfo?.verified && (
+          <View style={styles.warningBanner}>
+            <Ionicons name="warning" size={20} color="#f59e0b" />
+            <Text style={styles.warningText}>
+              Unverified app — confirm you trust this source
+            </Text>
+          </View>
+        )}
+
         <View style={styles.card}>
-          {payload.display && (
-            <>
-              <Text style={styles.appName}>{payload.display.title}</Text>
-              <Text style={styles.description}>{payload.display.description}</Text>
-              <View style={styles.divider} />
-            </>
+          {/* App identity from registry or QR display */}
+          <View style={styles.appHeader}>
+            <Text style={styles.appName}>
+              {appInfo?.name ?? payload.display?.title ?? 'Unknown App'}
+            </Text>
+            {appInfo?.verified && (
+              <View style={styles.verifiedBadge}>
+                <Ionicons name="checkmark-circle" size={16} color="#10b981" />
+                <Text style={styles.verifiedText}>Verified</Text>
+              </View>
+            )}
+          </View>
+          {(appInfo?.description || payload.display?.description) && (
+            <Text style={styles.description}>
+              {appInfo?.description ?? payload.display?.description}
+            </Text>
           )}
+          {appInfo?.category && (
+            <Text style={styles.categoryTag}>{appInfo.category}</Text>
+          )}
+          <View style={styles.divider} />
 
           <DetailRow label="Action" value={payload.action} />
-          <DetailRow label="App" value={shortAddress(payload.app)} />
+          <DetailRow label="App" value={appInfo?.name ? `${appInfo.name} (${shortAddress(payload.app)})` : shortAddress(payload.app)} />
 
           {Object.entries(payload.params).map(([key, value]) => (
             <DetailRow
@@ -228,15 +262,60 @@ const styles = StyleSheet.create({
     borderColor: '#334155',
     marginBottom: 24,
   },
+  warningBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderWidth: 1,
+    borderColor: '#f59e0b',
+    borderRadius: 12,
+    padding: 12,
+    width: '100%',
+    marginBottom: 16,
+  },
+  warningText: {
+    color: '#f59e0b',
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+  },
+  appHeader: {
+    alignItems: 'center',
+    gap: 6,
+  },
   appName: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#f8fafc',
     textAlign: 'center',
   },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  verifiedText: {
+    color: '#10b981',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  categoryTag: {
+    color: '#64748b',
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginTop: 6,
+    textAlign: 'center',
+  },
   description: {
     fontSize: 14,
-    color: '#10b981',
+    color: '#94a3b8',
     textAlign: 'center',
     marginTop: 4,
   },
