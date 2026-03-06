@@ -1,8 +1,15 @@
 // IntentGuard Background Service Worker
-// Handles intent checks, bypass list management, and badge state
+// Handles intent checks, bypass list management, badge state, and pairing
+
+importScripts('pairing.js');
 
 const PROGRAM_ID = '4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7';
-const RPC_URL = 'https://api.devnet.solana.com';
+const DEFAULT_RPC_URL = 'https://api.mainnet-beta.solana.com';
+
+async function getRpcUrl() {
+  const data = await chrome.storage.local.get('rpcUrl');
+  return data.rpcUrl || DEFAULT_RPC_URL;
+}
 
 // Base58 decode
 const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
@@ -38,7 +45,8 @@ async function hasActiveIntent(wallet) {
     const walletBytes = base58Decode(wallet);
     const walletBase64 = btoa(String.fromCharCode(...walletBytes));
 
-    const res = await fetch(RPC_URL, {
+    const rpcUrl = await getRpcUrl();
+    const res = await fetch(rpcUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -66,8 +74,8 @@ async function hasActiveIntent(wallet) {
       if (expiresAt > now) return true;
     }
   } catch {
-    // RPC error — don't block, allow through
-    return true;
+    // RPC error — fail-closed: block transaction until RPC is reachable
+    return false;
   }
   return false;
 }
@@ -80,9 +88,14 @@ async function isBypassed(origin) {
 }
 
 // Add origin to bypass list
+const MAX_BYPASS_LIST_SIZE = 50;
+
 async function addBypass(origin) {
   const data = await chrome.storage.local.get('bypassList');
   const list = data.bypassList || [];
+  if (list.length >= MAX_BYPASS_LIST_SIZE) {
+    throw new Error('Bypass list full. Remove some sites first.');
+  }
   if (!list.includes(origin)) {
     list.push(origin);
     await chrome.storage.local.set({ bypassList: list });
@@ -132,9 +145,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   if (msg.type === 'ADD_BYPASS') {
-    addBypass(msg.origin);
-    sendResponse({ ok: true });
-    return;
+    (async () => {
+      try {
+        await addBypass(msg.origin);
+        sendResponse({ ok: true });
+      } catch (err) {
+        sendResponse({ ok: false, error: err.message });
+      }
+    })();
+    return true;
   }
 
   if (msg.type === 'REMOVE_BYPASS') {
@@ -149,10 +168,64 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     });
     return true;
   }
+
+  // ─── Pairing messages ─────────────────────────────────────────────
+
+  if (msg.type === 'START_PAIRING') {
+    (async () => {
+      try {
+        const qrData = await globalThis.igPairing.startPairing();
+        sendResponse({ ok: true, qrData });
+      } catch (err) {
+        sendResponse({ ok: false, error: err.message });
+      }
+    })();
+    return true;
+  }
+
+  if (msg.type === 'WAIT_PAIRING') {
+    (async () => {
+      try {
+        const device = await globalThis.igPairing.waitForPairingResponse();
+        sendResponse({ ok: true, device });
+      } catch (err) {
+        sendResponse({ ok: false, error: err.message });
+      }
+    })();
+    return true;
+  }
+
+  if (msg.type === 'GET_PAIRED_DEVICES') {
+    (async () => {
+      const devices = await globalThis.igPairing.getPairedDevices();
+      sendResponse({ devices });
+    })();
+    return true;
+  }
+
+  if (msg.type === 'UNPAIR_DEVICE') {
+    (async () => {
+      await globalThis.igPairing.removePairedDevice(msg.deviceId);
+      sendResponse({ ok: true });
+    })();
+    return true;
+  }
+
+  if (msg.type === 'NOTIFY_INTENT_NEEDED') {
+    (async () => {
+      const notified = await globalThis.igPairing.notifyIntentNeeded(msg.txDetails);
+      sendResponse({ notified });
+    })();
+    return true;
+  }
 });
 
-// Set badge on install
+// Set badge on install + init pairing connections
 chrome.runtime.onInstalled.addListener(() => {
   console.log('IntentGuard extension installed');
   chrome.action.setBadgeBackgroundColor({ color: '#10b981' });
+  globalThis.igPairing.initPairing();
 });
+
+// Reconnect paired devices when service worker starts
+globalThis.igPairing.initPairing();

@@ -30,9 +30,19 @@ const { Permission, Permissions } = multisig.types;
 
 // ─── Config ───────────────────────────────────────────────────
 const PROGRAM_ID = new PublicKey("4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7");
-const RPC_URL = "https://api.devnet.solana.com"; // Change to mainnet-beta for production
-const TIME_LOCK = 0; // seconds — set to 86400 (24h) for mainnet
-const THRESHOLD = 1; // signatures required — increase when adding team members
+const RPC_URL = process.env.RPC_URL || "https://api.mainnet-beta.solana.com";
+
+// Mainnet production settings — ADJUST THESE BEFORE RUNNING
+const TIME_LOCK = 86_400; // 24 hours — proposals must wait before execution
+const THRESHOLD = 2; // signatures required — at least 2-of-N for mainnet
+
+// Team members — add all signers' pubkeys here before running
+const MEMBERS: { key: string; role: "voter" | "executor" | "all" }[] = [
+  // The deployer (loaded from ~/.config/solana/id.json) is added automatically.
+  // Add more members below:
+  // { key: "MEMBER2_PUBKEY_BASE58", role: "all" },
+  // { key: "MEMBER3_PUBKEY_BASE58", role: "voter" },
+];
 
 // ─── Helpers ──────────────────────────────────────────────────
 function loadKeypair(): Keypair {
@@ -53,13 +63,54 @@ async function main() {
   const connection = new Connection(RPC_URL, "confirmed");
   const admin = loadKeypair();
 
+  // Build full member list (deployer + configured members)
+  const allMembers: { key: PublicKey; permissions: any }[] = [
+    {
+      key: admin.publicKey,
+      permissions: Permissions.all(),
+    },
+    ...MEMBERS.map((m) => ({
+      key: new PublicKey(m.key),
+      permissions:
+        m.role === "all"
+          ? Permissions.all()
+          : m.role === "voter"
+          ? Permissions.fromPermissions([Permission.Vote])
+          : Permissions.fromPermissions([Permission.Execute]),
+    })),
+  ];
+
+  const totalMembers = allMembers.length;
+
+  // Safety checks
+  if (THRESHOLD < 2) {
+    console.error("ERROR: THRESHOLD must be >= 2 for mainnet. Single-signer multisig is pointless.");
+    process.exit(1);
+  }
+  if (THRESHOLD > totalMembers) {
+    console.error(`ERROR: THRESHOLD (${THRESHOLD}) > total members (${totalMembers}). Transactions would be unexecutable.`);
+    process.exit(1);
+  }
+  if (totalMembers < 2) {
+    console.error("ERROR: Need at least 2 members for mainnet multisig. Add members to MEMBERS array.");
+    process.exit(1);
+  }
+  if (TIME_LOCK < 3600 && !process.argv.includes("--no-timelock-check")) {
+    console.error("ERROR: TIME_LOCK should be >= 3600 (1 hour) for mainnet. Use --no-timelock-check to override.");
+    process.exit(1);
+  }
+
   console.log("\n=== IntentGuard Squads Multisig Setup ===\n");
   console.log("Mode:          ", dryRun ? "DRY RUN (add --execute to apply)" : "LIVE");
   console.log("Cluster:       ", RPC_URL);
   console.log("Admin:         ", admin.publicKey.toBase58());
   console.log("Program:       ", PROGRAM_ID.toBase58());
-  console.log("Threshold:     ", THRESHOLD);
-  console.log("Time lock:     ", TIME_LOCK, "seconds");
+  console.log("Threshold:     ", `${THRESHOLD} of ${totalMembers}`);
+  console.log("Time lock:     ", TIME_LOCK, `seconds (${TIME_LOCK / 3600}h)`);
+  console.log("Members:");
+  for (const m of allMembers) {
+    console.log(`  - ${m.key.toBase58()}`);
+  }
 
   // ─── Step 1: Create Multisig ──────────────────────────────
   console.log("\n[Step 1] Creating Squads multisig...");
@@ -95,12 +146,7 @@ async function main() {
         multisigPda,
         configAuthority: null,
         timeLock: TIME_LOCK,
-        members: [
-          {
-            key: admin.publicKey,
-            permissions: Permissions.all(),
-          },
-        ],
+        members: allMembers,
         threshold: THRESHOLD,
         rentCollector: null,
         treasury: programConfig.treasury,
@@ -174,7 +220,7 @@ async function main() {
   console.log("=".repeat(55));
   console.log("  Multisig PDA:      ", multisigPda.toBase58());
   console.log("  Vault PDA:         ", vaultPda.toBase58());
-  console.log("  Threshold:         ", THRESHOLD, "of 1 members");
+  console.log("  Threshold:         ", `${THRESHOLD} of ${totalMembers} members`);
   console.log("  Time lock:         ", TIME_LOCK, "seconds");
   console.log("  Program authority:  ->", vaultPda.toBase58());
   console.log("  Config admin:       ->", vaultPda.toBase58());

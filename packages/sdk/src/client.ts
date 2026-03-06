@@ -21,7 +21,11 @@ import { PublicKey } from '@solana/web3.js';
  */
 export function computeIntentHash(buffers: Buffer[]): number[] {
   const hash = createHash('sha256');
+  // Length-prefix each buffer to prevent concatenation ambiguity
+  const lenBuf = Buffer.alloc(4);
   for (const buf of buffers) {
+    lenBuf.writeUInt32LE(buf.length, 0);
+    hash.update(lenBuf);
     hash.update(buf);
   }
   return Array.from(hash.digest());

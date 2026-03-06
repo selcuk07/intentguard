@@ -9,7 +9,11 @@
 
   const IG_PREFIX = 'intentguard:';
   let pendingRequests = new Map();
-  let requestId = 0;
+
+  function generateRequestId() {
+    const bytes = crypto.getRandomValues(new Uint8Array(8));
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
 
   // Listen for responses from content script
   window.addEventListener('message', (event) => {
@@ -32,7 +36,7 @@
 
   function requestApproval(method, programIds) {
     return new Promise((resolve, reject) => {
-      const id = ++requestId;
+      const id = generateRequestId();
       pendingRequests.set(id, { resolve, reject });
 
       window.postMessage({

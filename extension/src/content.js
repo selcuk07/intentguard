@@ -5,7 +5,16 @@
   'use strict';
 
   const PROGRAM_ID = '4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7';
-  const RPC_URL = 'https://api.devnet.solana.com';
+  const DEFAULT_RPC_URL = 'https://api.mainnet-beta.solana.com';
+
+  async function getRpcUrl() {
+    try {
+      const data = await chrome.storage.local.get('rpcUrl');
+      return data.rpcUrl || DEFAULT_RPC_URL;
+    } catch {
+      return DEFAULT_RPC_URL;
+    }
+  }
 
   // ─── Inject page-level script ──────────────────────────────────────
 
@@ -24,6 +33,7 @@
   let activeOverlay = null;
   let activeRequestId = null;
   let pollTimer = null;
+  let pollRequestId = null; // Track which request owns the poll
 
   window.addEventListener('message', async (event) => {
     if (event.source !== window) return;
@@ -53,6 +63,12 @@
     // No intent found — show blocking overlay
     activeRequestId = id;
     showOverlay(method, programIds, response.wallet);
+
+    // Notify paired mobile devices
+    chrome.runtime.sendMessage({
+      type: 'NOTIFY_INTENT_NEEDED',
+      txDetails: { method, programIds, origin },
+    });
   });
 
   // ─── Blocking Overlay ─────────────────────────────────────────────
@@ -148,23 +164,53 @@
     return div.innerHTML;
   }
 
+  function updateOverlayStatus(text, color) {
+    const status = document.getElementById('ig-overlay-status');
+    if (!status) return;
+    status.textContent = '';
+    const span = document.createElement('span');
+    span.style.color = color;
+    span.textContent = text;
+    status.appendChild(span);
+  }
+
+  // ─── Listen for mobile pairing commit notification ─────────────────
+
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === 'IG_INTENT_COMMITTED' && activeOverlay) {
+      updateOverlayStatus('\u2705 Intent committed from mobile! Verifying...', '#10b981');
+      // The regular polling will detect the on-chain PDA and auto-allow
+    }
+  });
+
   // ─── Poll for Intent Commit PDA ───────────────────────────────────
 
   function startPollingForIntent(wallet, programIds) {
     if (!wallet) return;
 
+    // Cancel any existing poll before starting a new one
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+
+    const thisRequestId = activeRequestId;
+    pollRequestId = thisRequestId;
     let attempts = 0;
     const maxAttempts = 150; // 5 minutes at 2s intervals
 
     pollTimer = setInterval(async () => {
+      // Stop if a newer request has taken over
+      if (pollRequestId !== thisRequestId) {
+        clearInterval(pollTimer);
+        return;
+      }
+
       attempts++;
       if (attempts > maxAttempts) {
         clearInterval(pollTimer);
         pollTimer = null;
-        const status = document.getElementById('ig-overlay-status');
-        if (status) {
-          status.innerHTML = '<span style="color:#ef4444;">Timed out waiting for intent commit.</span>';
-        }
+        updateOverlayStatus('Timed out waiting for intent commit.', '#ef4444');
         return;
       }
 
@@ -174,10 +220,7 @@
           clearInterval(pollTimer);
           pollTimer = null;
 
-          const status = document.getElementById('ig-overlay-status');
-          if (status) {
-            status.innerHTML = '<span style="color:#10b981;">&#x2705; Intent verified! Proceeding...</span>';
-          }
+          updateOverlayStatus('\u2705 Intent verified! Proceeding...', '#10b981');
 
           // Small delay so user sees the success message
           setTimeout(() => respondAndClose('allow'), 800);
@@ -195,7 +238,8 @@
     const walletBytes = base58Decode(wallet);
     const walletBase64 = btoa(String.fromCharCode(...walletBytes));
 
-    const res = await fetch(RPC_URL, {
+    const rpcUrl = await getRpcUrl();
+    const res = await fetch(rpcUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -290,7 +334,8 @@
     if (!dot) return;
 
     try {
-      const res = await fetch(RPC_URL, {
+      const rpcUrl = await getRpcUrl();
+      const res = await fetch(rpcUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
