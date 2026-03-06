@@ -8,19 +8,25 @@
  *     params={{ amount: "1000000000", inputMint: "So11...", outputMint: "EPjF..." }}
  *     onVerified={(hash) => executeSwap(hash)}
  *     onError={(err) => console.error(err)}
+ *     mode="auto" // 'websocket' | 'polling' | 'auto' (default)
  *   />
  *
  * Flow:
  *   1. Button renders "Secure with IntentGuard" + QR code
- *   2. User scans QR on mobile → commits intent
- *   3. Component polls for IntentCommit PDA on-chain
- *   4. When found → calls onVerified with the intent hash
+ *   2. User scans QR on mobile -> commits intent
+ *   3. Component detects IntentCommit PDA via WebSocket (or polling fallback)
+ *   4. When found -> calls onVerified with the intent hash
  *   5. dApp adds verify_intent to the transaction
+ *
+ * Detection modes:
+ *   - 'websocket': Uses Solana onAccountChange subscription (~400ms latency)
+ *   - 'polling': Uses setInterval + getAccountInfo (configurable interval)
+ *   - 'auto': Tries WebSocket first, falls back to polling if subscription fails
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React from 'react';
 import { PublicKey, Connection } from '@solana/web3.js';
-import { computeIntentHash, findIntentCommitPda } from './index';
+import { useIntentGuard, IntentDetectionMode } from './hooks';
 
 export interface IntentGuardButtonProps {
   /** User's wallet public key */
@@ -39,13 +45,13 @@ export interface IntentGuardButtonProps {
   onError?: (error: Error) => void;
   /** TTL in seconds (default: 300) */
   ttl?: number;
-  /** Poll interval in ms (default: 2000) */
+  /** Poll interval in ms — only used in polling mode (default: 2000) */
   pollInterval?: number;
+  /** Detection mode: 'websocket' | 'polling' | 'auto' (default: 'auto') */
+  mode?: IntentDetectionMode;
   /** Custom class name */
   className?: string;
 }
-
-type GuardState = 'idle' | 'waiting' | 'verified' | 'expired' | 'error';
 
 export function IntentGuardButton({
   userPublicKey,
@@ -57,79 +63,28 @@ export function IntentGuardButton({
   onError,
   ttl = 300,
   pollInterval = 2000,
+  mode = 'auto',
   className,
 }: IntentGuardButtonProps) {
-  const [state, setState] = useState<GuardState>('idle');
-  const [qrData, setQrData] = useState<string>('');
-  const [countdown, setCountdown] = useState(ttl);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const intentHash = computeIntentHash([
-    appId.toBuffer(),
-    userPublicKey.toBuffer(),
-    Buffer.from(action),
-    Buffer.from(JSON.stringify(params, Object.keys(params).sort())),
-  ]);
-
-  const [intentPda] = findIntentCommitPda(userPublicKey, appId);
-
-  const startPolling = useCallback(() => {
-    // Generate QR data
-    const payload = JSON.stringify({
-      protocol: 'intentguard',
-      version: 1,
-      app: appId.toBase58(),
-      action,
-      params,
-      display: {
-        title: `IntentGuard`,
-        description: `${action} verification`,
-      },
-    });
-    setQrData(payload);
-    setState('waiting');
-    setCountdown(ttl);
-
-    // Poll for PDA
-    intervalRef.current = setInterval(async () => {
-      try {
-        const info = await connection.getAccountInfo(intentPda);
-        if (info) {
-          cleanup();
-          setState('verified');
-          onVerified(intentHash);
-        }
-      } catch (err) {
-        // RPC errors are transient, keep polling
-      }
-    }, pollInterval);
-
-    // Countdown
-    countdownRef.current = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          cleanup();
-          setState('expired');
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }, [appId, action, params, userPublicKey, connection, intentPda, intentHash, onVerified, ttl, pollInterval]);
-
-  const cleanup = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (countdownRef.current) clearInterval(countdownRef.current);
-  };
-
-  useEffect(() => () => cleanup(), []);
-
-  const reset = () => {
-    cleanup();
-    setState('idle');
-    setCountdown(ttl);
-  };
+  const {
+    state,
+    qrData,
+    countdown,
+    mode: activeMode,
+    start,
+    reset,
+  } = useIntentGuard({
+    userPublicKey,
+    appId,
+    action,
+    params,
+    connection,
+    onVerified,
+    onError,
+    ttl,
+    pollInterval,
+    mode,
+  });
 
   // Styles
   const baseStyle: React.CSSProperties = {
@@ -147,7 +102,7 @@ export function IntentGuardButton({
     return (
       <div style={baseStyle} className={className}>
         <button
-          onClick={startPolling}
+          onClick={start}
           style={{
             background: '#10b981',
             color: '#fff',
@@ -193,6 +148,9 @@ export function IntentGuardButton({
         <div style={{ fontSize: '14px', color: '#10b981', fontWeight: 600 }}>
           Waiting for confirmation... ({countdown}s)
         </div>
+        <div style={{ fontSize: '11px', color: '#475569', marginTop: '4px' }}>
+          {activeMode === 'websocket' ? 'Live detection via WebSocket' : 'Polling every ' + (pollInterval / 1000) + 's'}
+        </div>
         <button
           onClick={reset}
           style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '13px', cursor: 'pointer', marginTop: '8px' }}
@@ -224,7 +182,7 @@ export function IntentGuardButton({
           Timed out
         </div>
         <button
-          onClick={startPolling}
+          onClick={start}
           style={{
             background: '#1e293b',
             color: '#f1f5f9',
@@ -236,6 +194,30 @@ export function IntentGuardButton({
           }}
         >
           Try Again
+        </button>
+      </div>
+    );
+  }
+
+  if (state === 'error') {
+    return (
+      <div style={{ ...baseStyle, borderColor: 'rgba(239,68,68,0.3)' }} className={className}>
+        <div style={{ fontSize: '15px', color: '#ef4444', fontWeight: 600, marginBottom: '8px' }}>
+          Connection error
+        </div>
+        <button
+          onClick={start}
+          style={{
+            background: '#1e293b',
+            color: '#f1f5f9',
+            border: '1px solid #334155',
+            borderRadius: '8px',
+            padding: '10px 20px',
+            fontSize: '14px',
+            cursor: 'pointer',
+          }}
+        >
+          Retry
         </button>
       </div>
     );

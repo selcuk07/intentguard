@@ -54,7 +54,7 @@
 - [x] `<IntentGuardButton />` React component
 - [x] States: idle → show QR → waiting for commit → verified → expired
 - [x] Polling for IntentCommit PDA detection
-- [ ] WebSocket mode for faster detection
+- [x] WebSocket mode for faster detection
 - [ ] Fallback: manual hash entry for CLI users
 
 ## Phase 3 — SDK + Publishing ✅ DONE
