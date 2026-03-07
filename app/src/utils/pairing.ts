@@ -3,110 +3,88 @@
  *
  * Handles ECDH key exchange, encrypted WebSocket communication
  * with the browser extension via a relay server.
+ *
+ * Uses @noble/* libraries instead of crypto.subtle (unavailable in React Native).
  */
 
 import { Platform } from 'react-native';
+import { p256 } from '@noble/curves/p256';
+import { hkdf } from '@noble/hashes/hkdf';
+import { sha256 } from '@noble/hashes/sha256';
+import { gcm } from '@noble/ciphers/aes';
+
+// Use polyfilled crypto.getRandomValues (from react-native-get-random-values)
+function randomBytes(n: number): Uint8Array {
+  const buf = new Uint8Array(n);
+  crypto.getRandomValues(buf);
+  return buf;
+}
 
 const PAIRING_STORAGE_KEY = 'ig_paired_extension';
 
 // ─── Crypto Helpers ──────────────────────────────────────────────────
 
-function arrayBufToBase64(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf);
+function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
   for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
   return btoa(binary);
 }
 
-function base64ToArrayBuf(b64: string): ArrayBuffer {
+function base64ToBytes(b64: string): Uint8Array {
   const binary = atob(b64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes.buffer;
+  return bytes;
 }
 
 function randomId(): string {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
+  const bytes = randomBytes(16);
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function generateKeyPair(): Promise<CryptoKeyPair> {
-  return crypto.subtle.generateKey(
-    { name: 'ECDH', namedCurve: 'P-256' },
-    true,
-    ['deriveKey', 'deriveBits']
-  );
+interface KeyPair {
+  privateKey: Uint8Array;
+  publicKey: Uint8Array; // 65 bytes uncompressed
 }
 
-async function exportPublicKey(key: CryptoKey): Promise<string> {
-  const raw = await crypto.subtle.exportKey('raw', key);
-  return arrayBufToBase64(raw);
+function generateKeyPair(): KeyPair {
+  const privateKey = p256.utils.randomPrivateKey();
+  const publicKey = p256.getPublicKey(privateKey, false); // uncompressed (65 bytes)
+  return { privateKey, publicKey };
 }
 
-async function importPublicKey(b64: string): Promise<CryptoKey> {
-  const raw = base64ToArrayBuf(b64);
-  return crypto.subtle.importKey(
-    'raw',
-    raw,
-    { name: 'ECDH', namedCurve: 'P-256' },
-    true,
-    []
-  );
+function exportPublicKey(kp: KeyPair): string {
+  return bytesToBase64(kp.publicKey);
 }
 
-async function deriveSharedKey(privateKey: CryptoKey, peerPublicKey: CryptoKey): Promise<CryptoKey> {
-  const sharedBits = await crypto.subtle.deriveBits(
-    { name: 'ECDH', public: peerPublicKey },
-    privateKey,
-    256
-  );
+function deriveSharedKey(privateKey: Uint8Array, peerPublicKeyB64: string): Uint8Array {
+  const peerPublicKey = base64ToBytes(peerPublicKeyB64);
+  const sharedPoint = p256.getSharedSecret(privateKey, peerPublicKey);
+  // sharedPoint is 65 bytes (uncompressed), take x-coordinate (bytes 1..33)
+  const sharedSecret = sharedPoint.slice(1, 33);
 
-  const hkdfKey = await crypto.subtle.importKey(
-    'raw',
-    sharedBits,
-    'HKDF',
-    false,
-    ['deriveKey']
-  );
-
-  return crypto.subtle.deriveKey(
-    {
-      name: 'HKDF',
-      hash: 'SHA-256',
-      salt: new TextEncoder().encode('intentguard-pairing-v1'),
-      info: new TextEncoder().encode('aes-gcm-key'),
-    },
-    hkdfKey,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
+  // HKDF-SHA256 to derive AES-256 key
+  const salt = new TextEncoder().encode('intentguard-pairing-v1');
+  const info = new TextEncoder().encode('aes-gcm-key');
+  return hkdf(sha256, sharedSecret, salt, info, 32);
 }
 
-async function encryptMessage(key: CryptoKey, plaintext: any): Promise<{ iv: string; data: string }> {
-  const iv = new Uint8Array(12);
-  crypto.getRandomValues(iv);
+function encryptMessage(key: Uint8Array, plaintext: any): { iv: string; data: string } {
+  const iv = randomBytes(12);
   const encoded = new TextEncoder().encode(JSON.stringify(plaintext));
-  const ciphertext = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv: iv as any },
-    key,
-    encoded as any
-  );
+  const aes = gcm(key, iv);
+  const ciphertext = aes.encrypt(encoded);
   return {
-    iv: arrayBufToBase64(iv.buffer as ArrayBuffer),
-    data: arrayBufToBase64(ciphertext),
+    iv: bytesToBase64(iv),
+    data: bytesToBase64(ciphertext),
   };
 }
 
-async function decryptMessage(key: CryptoKey, envelope: { iv: string; data: string }): Promise<any> {
-  const iv = new Uint8Array(base64ToArrayBuf(envelope.iv));
-  const ciphertext = base64ToArrayBuf(envelope.data);
-  const plaintext = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: iv as any },
-    key,
-    ciphertext
-  );
+function decryptMessage(key: Uint8Array, envelope: { iv: string; data: string }): any {
+  const iv = base64ToBytes(envelope.iv);
+  const ciphertext = base64ToBytes(envelope.data);
+  const aes = gcm(key, iv);
+  const plaintext = aes.decrypt(ciphertext);
   return JSON.parse(new TextDecoder().decode(plaintext));
 }
 
@@ -136,15 +114,6 @@ async function setItem(key: string, value: string): Promise<void> {
   }
   const SecureStore = await import('expo-secure-store');
   await SecureStore.setItemAsync(key, value);
-}
-
-async function deleteItem(key: string): Promise<void> {
-  if (Platform.OS === 'web') {
-    localStorage.removeItem(key);
-    return;
-  }
-  const SecureStore = await import('expo-secure-store');
-  await SecureStore.deleteItemAsync(key);
 }
 
 export async function getPairedExtensions(): Promise<PairedExtension[]> {
@@ -186,14 +155,14 @@ export function parsePairingQr(data: string): PairingQrData | null {
     if (parsed.protocol !== 'intentguard-pair') return null;
     if (!parsed.channelId || !parsed.publicKey || !parsed.relay) return null;
 
-    // Validate relay URL scheme — reject javascript:, data:, file:, etc
+    // Validate relay URL scheme
     const relay = String(parsed.relay);
     if (!/^https?:\/\//i.test(relay)) return null;
 
-    // Validate channelId length (hex string, max 64 chars)
+    // Validate channelId length
     if (typeof parsed.channelId !== 'string' || parsed.channelId.length > 64) return null;
 
-    // Validate publicKey is base64 and reasonable length (65 bytes = ~88 chars base64)
+    // Validate publicKey is base64 and reasonable length
     if (typeof parsed.publicKey !== 'string' || parsed.publicKey.length > 128) return null;
 
     return parsed as PairingQrData;
@@ -206,24 +175,21 @@ export function parsePairingQr(data: string): PairingQrData | null {
 
 export interface PairingResult {
   extension: PairedExtension;
-  sharedKey: CryptoKey;
+  sharedKey: Uint8Array;
   ws: WebSocket;
 }
 
 /**
  * Complete pairing after scanning extension's QR code.
- * Generates our ECDH keypair, sends public key to extension via relay,
- * waits for confirmation.
  */
 export async function completePairing(qrData: PairingQrData): Promise<PairingResult> {
-  const keyPair = await generateKeyPair();
-  const publicKeyB64 = await exportPublicKey(keyPair.publicKey);
+  const keyPair = generateKeyPair();
+  const publicKeyB64 = exportPublicKey(keyPair);
   const deviceId = randomId();
   const deviceName = Platform.OS === 'web' ? 'Web Browser' : `${Platform.OS} device`;
 
   // Derive shared key from extension's public key + our private key
-  const extensionPublicKey = await importPublicKey(qrData.publicKey);
-  const sharedKey = await deriveSharedKey(keyPair.privateKey, extensionPublicKey);
+  const sharedKey = deriveSharedKey(keyPair.privateKey, qrData.publicKey);
 
   // Connect to relay
   const relayUrl = qrData.relay.replace(/^http/, 'ws');
@@ -235,7 +201,6 @@ export async function completePairing(qrData: PairingQrData): Promise<PairingRes
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-      // Send our public key to extension
       ws.send(JSON.stringify({
         type: 'pair_response',
         publicKey: publicKeyB64,
@@ -278,22 +243,16 @@ export async function completePairing(qrData: PairingQrData): Promise<PairingRes
 // ─── Encrypted Communication ────────────────────────────────────────
 
 let activeWs: WebSocket | null = null;
-let activeSharedKey: CryptoKey | null = null;
+let activeSharedKey: Uint8Array | null = null;
 let intentNeededCallback: ((details: any) => void) | null = null;
 
-/**
- * Set callback for when extension sends an intent_needed message.
- */
 export function onIntentNeeded(callback: (details: any) => void): void {
   intentNeededCallback = callback;
 }
 
-/**
- * Connect to relay and listen for encrypted messages from extension.
- */
 export async function connectToExtension(extension: PairedExtension): Promise<WebSocket> {
-  const keyPair = await generateKeyPair();
-  const publicKeyB64 = await exportPublicKey(keyPair.publicKey);
+  const keyPair = generateKeyPair();
+  const publicKeyB64 = exportPublicKey(keyPair);
   const relayUrl = extension.relayUrl.replace(/^http/, 'ws');
   const wsUrl = `${relayUrl}/relay?channel=${extension.channelId}&role=mobile`;
 
@@ -301,7 +260,6 @@ export async function connectToExtension(extension: PairedExtension): Promise<We
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-      // Send reconnect with fresh ephemeral key
       ws.send(JSON.stringify({
         type: 'reconnect_response',
         publicKey: publicKeyB64,
@@ -324,15 +282,12 @@ export async function connectToExtension(extension: PairedExtension): Promise<We
       try {
         const msg = JSON.parse(typeof event.data === 'string' ? event.data : '');
 
-        // Handle reconnect handshake from extension
         if (msg.type === 'reconnect_request' && msg.publicKey) {
-          const extPublicKey = await importPublicKey(msg.publicKey);
-          activeSharedKey = await deriveSharedKey(keyPair.privateKey, extPublicKey);
+          activeSharedKey = deriveSharedKey(keyPair.privateKey, msg.publicKey);
         }
 
-        // Handle encrypted messages
         if (msg.type === 'encrypted' && activeSharedKey) {
-          const decrypted = await decryptMessage(activeSharedKey, msg.payload);
+          const decrypted = decryptMessage(activeSharedKey, msg.payload);
 
           if (decrypted.type === 'intent_needed' && intentNeededCallback) {
             intentNeededCallback(decrypted);
@@ -347,9 +302,6 @@ export async function connectToExtension(extension: PairedExtension): Promise<We
   });
 }
 
-/**
- * Send encrypted intent_committed message to extension.
- */
 export async function notifyIntentCommitted(intentPda: string): Promise<void> {
   await sendEncrypted({
     type: 'intent_committed',
@@ -365,16 +317,13 @@ async function sendEncrypted(message: any): Promise<void> {
   if (!activeSharedKey) {
     throw new Error('Shared key not established');
   }
-  const encrypted = await encryptMessage(activeSharedKey, message);
+  const encrypted = encryptMessage(activeSharedKey, message);
   activeWs.send(JSON.stringify({
     type: 'encrypted',
     payload: encrypted,
   }));
 }
 
-/**
- * Disconnect from relay.
- */
 export function disconnect(): void {
   if (activeWs) {
     activeWs.close();

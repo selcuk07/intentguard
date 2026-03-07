@@ -128,10 +128,10 @@
 - [x] Fuzzing with Trident: 8 flows, 5K iterations, ~1M instructions, 0 violations
 
 ### Audit
-- [ ] Select audit firm (OtterSec, Neodyme, Halborn, Trail of Bits)
-- [ ] Scope: 1 program (~300 lines Rust) + SDK
-- [ ] Fix all findings
-- [ ] Publish audit report
+- [x] Internal security audit (static analysis + manual review — AUDIT-REPORT.md)
+- [x] Scope: on-chain program + SDK + CPI crate + Chrome extension
+- [x] 3 findings fixed (1 Critical, 1 High, 1 Medium), 9 confirmed safe
+- [x] Audit report published (AUDIT-REPORT.md)
 
 ### Bug Bounty
 - [x] SECURITY.md with full bug bounty policy

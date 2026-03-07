@@ -974,7 +974,7 @@ describe('MAINNET — Pairing QR Validation', () => {
       version: 1,
       channelId: 'abc123',
       publicKey: 'AAAA',
-      relay: 'https://relay.intentguard.io',
+      relay: 'https://relay.intentshield.xyz',
     });
     expect(parsePairingQr(qr)).not.toBeNull();
   });

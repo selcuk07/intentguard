@@ -216,7 +216,7 @@ describe('SECURITY — QR Pairing Payload', () => {
       protocol: 'intentguard-pair',
       channelId: 'abc123',
       publicKey: 'BAAAA==',
-      relay: 'https://relay.intentguard.io',
+      relay: 'https://relay.intentshield.xyz',
     });
     expect(parsePairingQr(data)).not.toBeNull();
   });

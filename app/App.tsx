@@ -9,6 +9,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import ScanScreen from './src/screens/ScanScreen';
 import ConfirmScreen from './src/screens/ConfirmScreen';
 import PairScreen from './src/screens/PairScreen';
+import HistoryScreen from './src/screens/HistoryScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import { QrIntentPayload } from './src/utils/intentguard';
 import { parseDeepLink } from './src/utils/deeplink';
@@ -34,7 +35,7 @@ const TEST_PAYLOAD: QrIntentPayload = {
 
 const ONBOARDED_KEY = 'ig_onboarded';
 
-type Screen = 'onboarding' | 'home' | 'scan' | 'confirm' | 'pair' | 'pair-scan';
+type Screen = 'onboarding' | 'home' | 'scan' | 'confirm' | 'pair' | 'pair-scan' | 'history';
 
 export default function App() {
   const [screen, setScreen] = useState<Screen | null>(null);
@@ -108,7 +109,7 @@ export default function App() {
         <HomeScreen
           onScanPress={() => setScreen('scan')}
           onTestPress={handleTestIntent}
-          onHistoryPress={() => {}}
+          onHistoryPress={() => setScreen('history')}
           onPairPress={() => setScreen('pair')}
         />
       )}
@@ -128,6 +129,10 @@ export default function App() {
         />
       )}
 
+      {screen === 'history' && (
+        <HistoryScreen onBack={() => setScreen('home')} />
+      )}
+
       {screen === 'pair' && (
         <PairScreen
           onBack={() => setScreen('home')}
@@ -140,9 +145,11 @@ export default function App() {
 
       {screen === 'pair-scan' && (
         <ScanScreen
-          onScanned={(payload) => {
+          rawMode
+          onScanned={() => {}}
+          onRawScanned={(data) => {
             if (pairScanCallback) {
-              pairScanCallback(JSON.stringify(payload));
+              pairScanCallback(data);
               setPairScanCallback(null);
             }
             setScreen('pair');

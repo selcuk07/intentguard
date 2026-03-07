@@ -4,7 +4,7 @@
 importScripts('pairing.js');
 
 const PROGRAM_ID = '4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7';
-const DEFAULT_RPC_URL = 'https://api.mainnet-beta.solana.com';
+const DEFAULT_RPC_URL = 'https://api.devnet.solana.com';
 
 async function getRpcUrl() {
   const data = await chrome.storage.local.get('rpcUrl');
@@ -92,6 +92,15 @@ async function isBypassed(origin) {
 const MAX_BYPASS_LIST_SIZE = 50;
 
 async function addBypass(origin) {
+  // Validate origin is a proper URL scheme
+  try {
+    const url = new URL(origin);
+    if (!['https:', 'http:'].includes(url.protocol)) {
+      throw new Error('Invalid origin protocol');
+    }
+  } catch {
+    throw new Error('Invalid origin format');
+  }
   const data = await chrome.storage.local.get('bypassList');
   const list = data.bypassList || [];
   if (list.length >= MAX_BYPASS_LIST_SIZE) {
@@ -112,6 +121,10 @@ async function removeBypass(origin) {
 
 // Message handler
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // Validate sender is from our own extension (not from content scripts of other extensions)
+  if (sender.id !== chrome.runtime.id) return;
+
+
   if (msg.type === 'OPEN_POPUP') {
     chrome.action.openPopup();
     return;

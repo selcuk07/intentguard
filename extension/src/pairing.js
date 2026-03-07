@@ -3,7 +3,7 @@
 
 const PAIRING_STORAGE_KEY = 'ig_paired_devices';
 const RELAY_URL_KEY = 'ig_relay_url';
-const DEFAULT_RELAY_URL = 'ws://localhost:3000/relay';
+const DEFAULT_RELAY_URL = 'wss://intentshield.xyz';
 
 // ─── Crypto Helpers ──────────────────────────────────────────────────
 
@@ -217,7 +217,7 @@ async function completePairing(mobilePublicKeyB64, deviceName, deviceId) {
 function connectToRelay(channelId, onMessage) {
   return new Promise(async (resolve, reject) => {
     const relayUrl = await getRelayUrl();
-    const wsUrl = `${relayUrl}?channel=${channelId}&role=extension`;
+    const wsUrl = `${relayUrl}/relay?channel=${channelId}&role=extension`;
 
     let ws;
     try {

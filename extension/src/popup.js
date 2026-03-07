@@ -1,7 +1,7 @@
 // IntentGuard Extension — Popup Logic
 
 const PROGRAM_ID = '4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7';
-const DEFAULT_RPC_URL = 'https://api.mainnet-beta.solana.com';
+const DEFAULT_RPC_URL = 'https://api.devnet.solana.com';
 
 // Bundled app registry for resolving app_id -> human-readable name
 const APP_REGISTRY = {
@@ -368,15 +368,18 @@ async function loadPairedDevices() {
   let html = '';
   for (const device of devices) {
     const pairedDate = new Date(device.pairedAt).toLocaleDateString();
+    const safeName = escapeAttr(device.deviceName || 'Mobile Device');
+    const safeChannelId = escapeAttr(device.channelId.slice(0, 8));
+    const safeDeviceId = escapeAttr(device.deviceId);
     html += `
       <div class="intent-card" style="padding: 10px 14px; margin-bottom: 6px;">
         <div class="intent-row">
-          <span class="intent-label">${device.deviceName || 'Mobile Device'}</span>
-          <span class="intent-value" style="font-size: 10px;">${device.channelId.slice(0, 8)}...</span>
+          <span class="intent-label">${safeName}</span>
+          <span class="intent-value" style="font-size: 10px;">${safeChannelId}...</span>
         </div>
         <div class="intent-row">
-          <span class="intent-value" style="font-size: 10px; color: #64748b;">Paired ${pairedDate}</span>
-          <button class="btn btn-secondary" style="width: auto; padding: 3px 8px; margin: 0; font-size: 10px;" data-device-id="${device.deviceId}">Unpair</button>
+          <span class="intent-value" style="font-size: 10px; color: #64748b;">Paired ${escapeAttr(pairedDate)}</span>
+          <button class="btn btn-secondary" style="width: auto; padding: 3px 8px; margin: 0; font-size: 10px;" data-device-id="${safeDeviceId}">Unpair</button>
         </div>
       </div>
     `;
@@ -391,40 +394,29 @@ async function loadPairedDevices() {
   });
 }
 
-// QR Code rendering (minimal — draws data as text matrix)
+// QR Code rendering using qrcode-generator library
 function renderQrData(canvas, data) {
-  const ctx = canvas.getContext('2d');
   const text = JSON.stringify(data);
+  const qr = qrcode(0, 'L');
+  qr.addData(text);
+  qr.make();
+
+  const ctx = canvas.getContext('2d');
+  const moduleCount = qr.getModuleCount();
+  const cellSize = Math.floor(canvas.width / (moduleCount + 2));
+  const offset = Math.floor((canvas.width - cellSize * moduleCount) / 2);
+
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Simple text-based QR placeholder
-  // In production, use a QR library like qrcode-generator
   ctx.fillStyle = '#000';
-  ctx.font = '10px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('Pairing QR Code', canvas.width / 2, 20);
-
-  // Encode as simple blocks pattern from the data hash
-  const bytes = new TextEncoder().encode(text);
-  const blockSize = 6;
-  const cols = Math.floor(canvas.width / blockSize);
-  const rows = Math.floor((canvas.height - 40) / blockSize);
-
-  for (let i = 0; i < Math.min(bytes.length * 8, cols * rows); i++) {
-    const byteIdx = Math.floor(i / 8);
-    const bitIdx = i % 8;
-    if (bytes[byteIdx % bytes.length] & (1 << bitIdx)) {
-      const x = (i % cols) * blockSize;
-      const y = 30 + Math.floor(i / cols) * blockSize;
-      ctx.fillRect(x, y, blockSize - 1, blockSize - 1);
+  for (let row = 0; row < moduleCount; row++) {
+    for (let col = 0; col < moduleCount; col++) {
+      if (qr.isDark(row, col)) {
+        ctx.fillRect(offset + col * cellSize, offset + row * cellSize, cellSize, cellSize);
+      }
     }
   }
-
-  // Also show channel ID for manual entry fallback
-  ctx.fillStyle = '#666';
-  ctx.font = '8px monospace';
-  ctx.fillText(data.channelId.slice(0, 16) + '...', canvas.width / 2, canvas.height - 6);
 }
 
 document.getElementById('pairBtn').addEventListener('click', async () => {
