@@ -48,6 +48,9 @@ pub const DEFAULT_MIN_BALANCE: u64 = 10_000_000; // 0.01 SOL
 #[cfg(feature = "dev-testing")]
 pub const DEFAULT_MIN_BALANCE: u64 = 0;
 
+/// Maximum fee per verify (0.1 SOL — prevents admin abuse)
+pub const MAX_VERIFY_FEE: u64 = 100_000_000;
+
 /// Protocol configuration — global settings managed by admin.
 ///
 /// PDA seeds: [b"config"]
@@ -63,11 +66,17 @@ pub struct GuardConfig {
     pub total_verifies: u64,
     /// Minimum SOL balance (lamports) required to commit an intent
     pub min_balance: u64,
+    /// Fee in lamports charged per verify_intent (0 = free)
+    pub verify_fee: u64,
+    /// Total fees collected in lamports (lifetime counter)
+    pub total_fees_collected: u64,
     /// PDA bump seed
     pub bump: u8,
 }
 
 impl GuardConfig {
-    /// Account space: 8 + 32 + 1 + 8 + 8 + 8 + 1 = 66
-    pub const SPACE: usize = 8 + 32 + 1 + 8 + 8 + 8 + 1;
+    /// Account space: 8 + 32 + 1 + 8 + 8 + 8 + 8 + 8 + 1 = 82
+    pub const SPACE: usize = 8 + 32 + 1 + 8 + 8 + 8 + 8 + 8 + 1;
+    /// Previous space (for migration detection)
+    pub const OLD_SPACE: usize = 66;
 }

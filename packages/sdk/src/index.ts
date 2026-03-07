@@ -8,6 +8,8 @@ export {
   createPauseProtocolInstruction,
   createUnpauseProtocolInstruction,
   createTransferAdminInstruction,
+  createUpdateFeeInstruction,
+  createWithdrawFeesInstruction,
 } from './instructions';
 // App Registry
 export { lookupApp, lookupAppSync, isVerified, getKnownApps, fetchRegistry } from './registry';

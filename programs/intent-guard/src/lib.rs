@@ -55,6 +55,14 @@ pub mod intent_guard {
         instructions::admin::handler_update_config(ctx, new_min_balance)
     }
 
+    pub fn update_fee(ctx: Context<AdminAction>, new_fee: u64) -> Result<()> {
+        instructions::admin::handler_update_fee(ctx, new_fee)
+    }
+
+    pub fn withdraw_fees(ctx: Context<AdminAction>, amount: u64) -> Result<()> {
+        instructions::admin::handler_withdraw_fees(ctx, amount)
+    }
+
     pub fn migrate_config(ctx: Context<MigrateConfig>) -> Result<()> {
         instructions::admin::handler_migrate_config(ctx)
     }

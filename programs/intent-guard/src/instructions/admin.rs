@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::state::{GuardConfig, DEFAULT_MIN_BALANCE};
+use crate::state::{GuardConfig, DEFAULT_MIN_BALANCE, MAX_VERIFY_FEE};
 use crate::errors::GuardError;
 
 /// Maximum min_balance admin can set (1 SOL — prevents lockout)
@@ -73,6 +73,66 @@ pub fn handler_update_config(
         "IntentGuard: config updated by {} — min_balance={}",
         ctx.accounts.admin.key(),
         new_min_balance,
+    );
+    Ok(())
+}
+
+/// Update the protocol fee charged per verify_intent.
+///
+/// Fee is in lamports. Set to 0 for free usage.
+/// Maximum: 0.1 SOL (100_000_000 lamports) to prevent abuse.
+pub fn handler_update_fee(
+    ctx: Context<AdminAction>,
+    new_fee: u64,
+) -> Result<()> {
+    let config = &mut ctx.accounts.config;
+    require!(
+        config.admin == ctx.accounts.admin.key(),
+        GuardError::Unauthorized
+    );
+    require!(new_fee <= MAX_VERIFY_FEE, GuardError::FeeExceedsMaximum);
+    let old_fee = config.verify_fee;
+    config.verify_fee = new_fee;
+    msg!(
+        "IntentGuard: verify_fee updated by {} — {} -> {} lamports",
+        ctx.accounts.admin.key(),
+        old_fee,
+        new_fee,
+    );
+    Ok(())
+}
+
+/// Withdraw accumulated protocol fees from the config PDA.
+///
+/// Transfers excess lamports (above rent-exempt minimum) to admin.
+pub fn handler_withdraw_fees(
+    ctx: Context<AdminAction>,
+    amount: u64,
+) -> Result<()> {
+    let config = &ctx.accounts.config;
+    require!(
+        config.admin == ctx.accounts.admin.key(),
+        GuardError::Unauthorized
+    );
+
+    let config_info = ctx.accounts.config.to_account_info();
+    let rent = Rent::get()?;
+    let min_rent = rent.minimum_balance(config_info.data_len());
+    let available = config_info.lamports()
+        .checked_sub(min_rent)
+        .ok_or(GuardError::InsufficientFeeBalance)?;
+
+    require!(amount <= available, GuardError::InsufficientFeeBalance);
+
+    // Transfer from PDA to admin (PDA-owned lamports, no CPI needed)
+    **config_info.try_borrow_mut_lamports()? -= amount;
+    **ctx.accounts.admin.to_account_info().try_borrow_mut_lamports()? += amount;
+
+    msg!(
+        "IntentGuard: {} lamports withdrawn by {} (remaining={})",
+        amount,
+        ctx.accounts.admin.key(),
+        config_info.lamports() - amount,
     );
     Ok(())
 }

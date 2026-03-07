@@ -25,4 +25,13 @@ pub enum GuardError {
 
     #[msg("Config value out of allowed range")]
     ConfigValueOutOfRange,
+
+    #[msg("Invalid admin address — cannot transfer to zero address or program ID")]
+    InvalidAdmin,
+
+    #[msg("Fee exceeds maximum allowed (0.1 SOL)")]
+    FeeExceedsMaximum,
+
+    #[msg("Insufficient fee balance in config PDA for withdrawal")]
+    InsufficientFeeBalance,
 }

@@ -48,6 +48,12 @@ const UNPAUSE_PROTOCOL_DISCRIMINATOR: [u8; 8] = [183, 154, 5, 183, 105, 76, 87, 
 /// Anchor discriminator for `transfer_admin` instruction
 const TRANSFER_ADMIN_DISCRIMINATOR: [u8; 8] = [42, 242, 66, 106, 228, 10, 111, 156];
 
+/// Anchor discriminator for `update_fee` instruction
+const UPDATE_FEE_DISCRIMINATOR: [u8; 8] = [232, 253, 195, 247, 148, 212, 73, 222];
+
+/// Anchor discriminator for `withdraw_fees` instruction
+const WITHDRAW_FEES_DISCRIMINATOR: [u8; 8] = [198, 212, 171, 109, 144, 215, 174, 89];
+
 /// Accounts required for `verify_intent` CPI.
 pub struct VerifyIntentAccounts<'info> {
     /// IntentCommit PDA — `[b"intent", user, app_id]`
@@ -364,6 +370,60 @@ macro_rules! intent_guard_verify {
 ///     intent_hash
 /// );
 /// ```
+
+/// Update the protocol verify fee via CPI (admin only).
+///
+/// # Arguments
+/// * `accounts` — Admin accounts
+/// * `new_fee` — New fee in lamports (0 = free, max 0.1 SOL)
+pub fn update_fee_cpi(accounts: AdminAccounts, new_fee: u64) -> Result<()> {
+    let mut data = Vec::with_capacity(8 + 8);
+    data.extend_from_slice(&UPDATE_FEE_DISCRIMINATOR);
+    data.extend_from_slice(&new_fee.to_le_bytes());
+
+    let ix = Instruction {
+        program_id: INTENT_GUARD_PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new(accounts.config.key(), false),
+            AccountMeta::new(accounts.admin.key(), true),
+        ],
+        data,
+    };
+
+    solana_program::program::invoke(
+        &ix,
+        &[accounts.config, accounts.admin, accounts.intent_guard_program],
+    )?;
+
+    Ok(())
+}
+
+/// Withdraw accumulated protocol fees via CPI (admin only).
+///
+/// # Arguments
+/// * `accounts` — Admin accounts
+/// * `amount` — Amount in lamports to withdraw
+pub fn withdraw_fees_cpi(accounts: AdminAccounts, amount: u64) -> Result<()> {
+    let mut data = Vec::with_capacity(8 + 8);
+    data.extend_from_slice(&WITHDRAW_FEES_DISCRIMINATOR);
+    data.extend_from_slice(&amount.to_le_bytes());
+
+    let ix = Instruction {
+        program_id: INTENT_GUARD_PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new(accounts.config.key(), false),
+            AccountMeta::new(accounts.admin.key(), true),
+        ],
+        data,
+    };
+
+    solana_program::program::invoke(
+        &ix,
+        &[accounts.config, accounts.admin, accounts.intent_guard_program],
+    )?;
+
+    Ok(())
+}
 
 /// Transfer admin authority via CPI (admin only).
 ///

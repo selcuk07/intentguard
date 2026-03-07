@@ -26,6 +26,8 @@ pub fn handler(ctx: Context<InitializeGuard>) -> Result<()> {
     config.total_commits = 0;
     config.total_verifies = 0;
     config.min_balance = DEFAULT_MIN_BALANCE;
+    config.verify_fee = 0;
+    config.total_fees_collected = 0;
     config.bump = ctx.bumps.config;
 
     msg!("IntentGuard initialized");

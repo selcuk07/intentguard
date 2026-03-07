@@ -162,7 +162,7 @@
 ## Phase 8 — Growth + Protocol Revenue (Week 17+)
 
 ### Protocol Economics
-- [ ] Optional fee per verify (configurable, starts at 0)
+- [x] Optional fee per verify (configurable, starts at 0) — on-chain + SDK + CPI
 - [ ] Premium tier: priority verification, analytics dashboard
 - [ ] Staking: IG token for governance + fee sharing (if tokenized)
 
