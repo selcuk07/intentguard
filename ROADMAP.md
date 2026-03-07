@@ -145,7 +145,7 @@
 ### Mainnet Deployment
 - [ ] Deploy program to Solana mainnet-beta
 - [ ] Multisig upgrade authority (Squads)
-- [ ] Monitor: Helius webhooks for commit/verify events
+- [x] Monitor: Helius webhooks for commit/verify events (scripts/setup-helius-webhook.ts, webhook-server.ts)
 - [x] Dashboard: real-time stats (commits, verifies, verify rate, protocol status)
 
 ### SDK v1.0
@@ -156,7 +156,7 @@
 ### Mobile App v1.0
 - [ ] iOS App Store submission
 - [ ] Google Play Store submission
-- [ ] Onboarding flow: wallet connect → first intent → tutorial
+- [x] Onboarding flow: 5-step tutorial on first launch (OnboardingScreen.tsx)
 - [ ] Analytics: anonymous usage metrics
 
 ## Phase 8 — Growth + Protocol Revenue (Week 17+)
