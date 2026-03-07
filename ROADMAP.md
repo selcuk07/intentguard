@@ -108,9 +108,11 @@
 - [x] Marinade: stake/unstake intent verification (examples/marinade-stake.ts)
 
 ### App Registry
-- [ ] On-chain registry of verified app names + metadata
-- [ ] Mobile app resolves `app_id` → human-readable name + icon
-- [ ] Governance for registry additions (prevent spoofing)
+- [x] Off-chain registry of verified app names + metadata (landing/app-registry.json, SDK bundled)
+- [x] Mobile app resolves `app_id` → human-readable name + icon (app/src/utils/app-registry.ts)
+- [x] Extension resolves `app_id` → verified name + badge (popup.js)
+- [x] SDK exports: `lookupApp()`, `lookupAppSync()`, `isVerified()`, `getKnownApps()`, `fetchRegistry()`
+- [ ] On-chain registry program (governance for additions — future)
 
 ## Phase 6 — Security + Audit (Week 11–13) — IN PROGRESS
 

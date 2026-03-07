@@ -3,6 +3,29 @@
 const PROGRAM_ID = '4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7';
 const DEFAULT_RPC_URL = 'https://api.mainnet-beta.solana.com';
 
+// Bundled app registry for resolving app_id -> human-readable name
+const APP_REGISTRY = {
+  'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4': { name: 'Jupiter', category: 'DEX', verified: true },
+  '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8': { name: 'Raydium', category: 'DEX', verified: true },
+  'TSWAPaqyCSx2KABk68Shruf4rp7CxcNi8hAsbdwmHbN': { name: 'Tensor', category: 'NFT', verified: true },
+  'M2mx93ekt1fmXSVkTrUL9xVFHkmME8HTUi5Cyc5aF7K': { name: 'Magic Eden', category: 'NFT', verified: true },
+  'MarBmsSgKXdrN1egZf5sqe1TMai9K1rChYNDJgjq7aD': { name: 'Marinade', category: 'Staking', verified: true },
+  'PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY': { name: 'Phoenix', category: 'DEX', verified: true },
+  'DjVE6JNiYqPL2QXyCUUh8rNjHrbz9hXHNYt99MQ59qw1': { name: 'Orca', category: 'DEX', verified: true },
+  'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK': { name: 'Raydium CLMM', category: 'DEX', verified: true },
+  '4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7': { name: 'IntentGuard', category: 'Security', verified: true },
+  '11111111111111111111111111111111': { name: 'System Program', category: 'System', verified: true },
+};
+
+function resolveAppName(appIdBase58) {
+  const entry = APP_REGISTRY[appIdBase58];
+  if (entry) {
+    const badge = entry.verified ? ' &#x2713;' : '';
+    return `${escapeAttr(entry.name)}${badge} <span style="color:#64748b;font-size:10px;">(${escapeAttr(entry.category)})</span>`;
+  }
+  return escapeAttr(appIdBase58.slice(0, 12)) + '...';
+}
+
 async function getRpcUrl() {
   const data = await chrome.storage.local.get('rpcUrl');
   return data.rpcUrl || DEFAULT_RPC_URL;
@@ -137,7 +160,9 @@ function decodeIntentCommit(base64Data) {
   const expiresAt = Number(view.getBigInt64(112, true));
   const hashBytes = data.slice(72, 104);
   const hashHex = Array.from(hashBytes).map(b => b.toString(16).padStart(2, '0')).join('');
-  return { committedAt, expiresAt, hashHex };
+  const appIdBytes = data.slice(40, 72);
+  const appId = base58Encode(appIdBytes);
+  return { committedAt, expiresAt, hashHex, appId };
 }
 
 // Format time remaining
@@ -223,6 +248,10 @@ async function checkIntent(wallet, appId) {
             <span class="intent-status ${isActive ? 'status-active' : 'status-expired'}">
               ${isActive ? 'Active' : 'Expired'}
             </span>
+          </div>
+          <div class="intent-row">
+            <span class="intent-label">App</span>
+            <span class="intent-value">${resolveAppName(intent.appId)}</span>
           </div>
           <div class="intent-row">
             <span class="intent-label">Hash</span>

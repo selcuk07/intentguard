@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-03-06T00:00:00Z",
+  "updatedAt": "2026-03-07T00:00:00Z",
   "apps": {
     "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4": {
       "name": "Jupiter",
@@ -57,6 +57,22 @@
       "verified": true,
       "category": "DEX",
       "description": "Orca — Concentrated liquidity AMM"
+    },
+    "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK": {
+      "name": "Raydium CLMM",
+      "icon": "https://raydium.io/favicon.ico",
+      "website": "https://raydium.io",
+      "verified": true,
+      "category": "DEX",
+      "description": "Raydium Concentrated Liquidity Market Maker"
+    },
+    "11111111111111111111111111111111": {
+      "name": "System Program",
+      "icon": "",
+      "website": "https://solana.com",
+      "verified": true,
+      "category": "System",
+      "description": "Solana System Program — native SOL transfers"
     },
     "4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7": {
       "name": "IntentGuard",

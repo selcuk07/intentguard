@@ -9,6 +9,9 @@ export {
   createUnpauseProtocolInstruction,
   createTransferAdminInstruction,
 } from './instructions';
+// App Registry
+export { lookupApp, lookupAppSync, isVerified, getKnownApps, fetchRegistry } from './registry';
+export type { AppInfo, AppRegistry } from './registry';
 // React hook for custom UIs
 export { useIntentGuard } from './hooks';
 export type { UseIntentGuardOptions, UseIntentGuardResult, IntentDetectionMode, IntentGuardState } from './hooks';
