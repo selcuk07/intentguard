@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IntentGuard — Revenue Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      min-height: 100vh;
+    }
+    .container { max-width: 960px; margin: 0 auto; padding: 40px 24px; }
+    h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+    .subtitle { color: #94a3b8; font-size: 14px; margin-bottom: 32px; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .card-label { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .card-value { font-size: 24px; font-weight: 700; }
+    .card-sub { font-size: 12px; color: #64748b; margin-top: 4px; }
+    .green { color: #10b981; }
+    .yellow { color: #f59e0b; }
+
+    .section { margin-bottom: 32px; }
+    .section h2 { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid #1e293b; }
+    th { color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    td { font-size: 14px; }
+
+    .tier-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .tier-free { background: #1e293b; color: #94a3b8; }
+    .tier-pro { background: #10b98133; color: #10b981; }
+    .tier-enterprise { background: #6366f133; color: #818cf8; }
+
+    .bar-chart { display: flex; align-items: flex-end; gap: 4px; height: 120px; margin-top: 16px; }
+    .bar {
+      flex: 1;
+      background: #10b981;
+      border-radius: 4px 4px 0 0;
+      min-height: 4px;
+      position: relative;
+    }
+    .bar:hover { background: #34d399; }
+    .bar-label { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font-size: 9px; color: #64748b; white-space: nowrap; }
+
+    #loading { text-align: center; padding: 60px; color: #64748b; }
+    .error { color: #ef4444; text-align: center; padding: 20px; }
+
+    .refresh-btn {
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      float: right;
+    }
+    .refresh-btn:hover { background: #334155; color: #f1f5f9; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <button class="refresh-btn" onclick="loadData()">Refresh</button>
+    <h1>Revenue Dashboard</h1>
+    <p class="subtitle">IntentGuard protocol revenue and fee analytics</p>
+
+    <div id="loading">Loading protocol data...</div>
+    <div id="content" style="display:none;">
+
+      <div class="grid">
+        <div class="card">
+          <div class="card-label">Verify Fee</div>
+          <div class="card-value green" id="verifyFee">—</div>
+          <div class="card-sub" id="verifyFeeUsd"></div>
+        </div>
+        <div class="card">
+          <div class="card-label">Total Fees Collected</div>
+          <div class="card-value" id="totalFees">—</div>
+          <div class="card-sub" id="totalFeesUsd"></div>
+        </div>
+        <div class="card">
+          <div class="card-label">Total Verifies</div>
+          <div class="card-value" id="totalVerifies">—</div>
+          <div class="card-sub" id="verifyRate"></div>
+        </div>
+        <div class="card">
+          <div class="card-label">Revenue per Verify</div>
+          <div class="card-value" id="revenuePerVerify">—</div>
+          <div class="card-sub">average</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Revenue Projections</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Daily Verifies</th>
+              <th>Daily Revenue</th>
+              <th>Monthly</th>
+              <th>Yearly</th>
+            </tr>
+          </thead>
+          <tbody id="projections"></tbody>
+        </table>
+      </div>
+
+      <div class="section">
+        <h2>Pricing Tiers</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Tier</th>
+              <th>Rate Limit</th>
+              <th>Analytics</th>
+              <th>Webhooks</th>
+              <th>Monthly</th>
+              <th>Yearly</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="tier-badge tier-free">Free</span></td>
+              <td>10/min</td>
+              <td>—</td>
+              <td>—</td>
+              <td>$0</td>
+              <td>$0</td>
+            </tr>
+            <tr>
+              <td><span class="tier-badge tier-pro">Pro</span></td>
+              <td>100/min</td>
+              <td>Full</td>
+              <td>10</td>
+              <td>$49</td>
+              <td>$470</td>
+            </tr>
+            <tr>
+              <td><span class="tier-badge tier-enterprise">Enterprise</span></td>
+              <td>Unlimited</td>
+              <td>Full + SLA</td>
+              <td>100</td>
+              <td>$299</td>
+              <td>$2,990</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section">
+        <h2>Revenue Streams</h2>
+        <div class="grid">
+          <div class="card">
+            <div class="card-label">Protocol Fees</div>
+            <div class="card-value green" id="streamProtocol">—</div>
+            <div class="card-sub">On-chain per-verify fee</div>
+          </div>
+          <div class="card">
+            <div class="card-label">API Subscriptions</div>
+            <div class="card-value yellow" id="streamApi">$0</div>
+            <div class="card-sub">Pro + Enterprise tiers</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const RPC = 'https://api.mainnet-beta.solana.com';
+    const PROGRAM_ID = '4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7';
+    const LAMPORTS = 1_000_000_000;
+
+    async function loadData() {
+      try {
+        // Fetch GuardConfig
+        const discriminator = btoa(String.fromCharCode(95, 175, 118, 50, 193, 113, 37, 250));
+        const res = await fetch(RPC, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0', id: 1,
+            method: 'getProgramAccounts',
+            params: [PROGRAM_ID, {
+              encoding: 'base64',
+              filters: [{ memcmp: { offset: 0, bytes: discriminator, encoding: 'base64' } }],
+            }],
+          }),
+        });
+
+        const json = await res.json();
+        if (!json.result || json.result.length === 0) {
+          document.getElementById('loading').innerHTML = '<div class="error">Config not found</div>';
+          return;
+        }
+
+        const raw = atob(json.result[0].account.data[0]);
+        const data = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) data[i] = raw.charCodeAt(i);
+        const view = new DataView(data.buffer);
+
+        const totalCommits = Number(view.getBigUint64(41, true));
+        const totalVerifies = Number(view.getBigUint64(49, true));
+
+        let verifyFee = 0, totalFeesCollected = 0;
+        if (data.length >= 82) {
+          verifyFee = Number(view.getBigUint64(65, true));
+          totalFeesCollected = Number(view.getBigUint64(73, true));
+        }
+
+        const feeSol = verifyFee / LAMPORTS;
+        const totalFeesSol = totalFeesCollected / LAMPORTS;
+
+        // Update cards
+        document.getElementById('verifyFee').textContent = verifyFee === 0 ? 'FREE' : feeSol.toFixed(6) + ' SOL';
+        document.getElementById('verifyFeeUsd').textContent = verifyFee === 0 ? 'No fee enabled' : verifyFee.toLocaleString() + ' lamports';
+        document.getElementById('totalFees').textContent = totalFeesSol.toFixed(4) + ' SOL';
+        document.getElementById('totalFeesUsd').textContent = totalFeesCollected.toLocaleString() + ' lamports';
+        document.getElementById('totalVerifies').textContent = totalVerifies.toLocaleString();
+        document.getElementById('verifyRate').textContent = totalCommits > 0
+          ? (totalVerifies / totalCommits * 100).toFixed(1) + '% verify rate'
+          : '—';
+
+        const avgRevenue = totalVerifies > 0 ? totalFeesCollected / totalVerifies : verifyFee;
+        document.getElementById('revenuePerVerify').textContent = avgRevenue > 0 ? (avgRevenue / LAMPORTS).toFixed(6) + ' SOL' : 'N/A';
+
+        // Projections
+        const scenarios = [100, 500, 1000, 5000, 10000];
+        const tbody = document.getElementById('projections');
+        tbody.innerHTML = '';
+        for (const daily of scenarios) {
+          const dailyRev = daily * feeSol;
+          const monthlyRev = dailyRev * 30;
+          const yearlyRev = dailyRev * 365;
+          tbody.innerHTML += `<tr>
+            <td>${daily.toLocaleString()}</td>
+            <td>${dailyRev.toFixed(4)} SOL</td>
+            <td>${monthlyRev.toFixed(2)} SOL</td>
+            <td>${yearlyRev.toFixed(2)} SOL</td>
+          </tr>`;
+        }
+
+        document.getElementById('streamProtocol').textContent = totalFeesSol.toFixed(4) + ' SOL';
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+      } catch (err) {
+        document.getElementById('loading').innerHTML = `<div class="error">Error: ${err.message}</div>`;
+      }
+    }
+
+    loadData();
+  </script>
+</body>
+</html>

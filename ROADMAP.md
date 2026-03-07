@@ -163,14 +163,14 @@
 
 ### Protocol Economics
 - [x] Optional fee per verify (configurable, starts at 0) — on-chain + SDK + CPI
-- [ ] Premium tier: priority verification, analytics dashboard
+- [x] Premium API: tier system (Free/Pro/Enterprise), rate limiting, analytics, webhooks (scripts/api-server.ts)
 - [ ] Staking: IG token for governance + fee sharing (if tokenized)
 
 ### Ecosystem Growth
 - [ ] Solana Foundation grant application
 - [ ] Wallet-native integration (Phantom, Solflare built-in support)
 - [ ] Multi-chain: EVM version (Ethereum, Base, Arbitrum)
-- [ ] API: hosted verification service for Web2 integrations
+- [x] API: hosted verification service for Web2 integrations (scripts/api-server.ts)
 - [ ] Enterprise: custom deployment for institutional clients
 
 ### Community

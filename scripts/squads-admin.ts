@@ -15,6 +15,8 @@
  *   propose-unpause               Propose unpausing the protocol
  *   propose-update-config <bal>   Propose updating min_balance (lamports)
  *   propose-transfer-admin <key>  Propose transferring admin to new pubkey
+ *   propose-update-fee <lamports> Propose updating verify fee
+ *   propose-withdraw-fees <amt>   Propose withdrawing accumulated fees
  *   approve <index>               Approve proposal by transaction index
  *   execute <index>               Execute approved proposal after time lock
  *   status [index]                Show multisig status or proposal details

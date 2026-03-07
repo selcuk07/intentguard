@@ -142,7 +142,13 @@ function decodeGuardConfig(base64Data) {
   const totalCommits = Number(view.getBigUint64(41, true));
   const totalVerifies = Number(view.getBigUint64(49, true));
   const isPaused = data[40] === 1;
-  return { totalCommits, totalVerifies, isPaused };
+  let verifyFee = 0;
+  let totalFeesCollected = 0;
+  if (data.length >= 82) {
+    verifyFee = Number(view.getBigUint64(65, true));
+    totalFeesCollected = Number(view.getBigUint64(73, true));
+  }
+  return { totalCommits, totalVerifies, isPaused, verifyFee, totalFeesCollected };
 }
 
 // Decode IntentCommit from account data
@@ -194,6 +200,14 @@ async function fetchProtocolStats() {
       const config = decodeGuardConfig(result[0].account.data[0]);
       document.getElementById('totalCommits').textContent = config.totalCommits.toLocaleString();
       document.getElementById('totalVerifies').textContent = config.totalVerifies.toLocaleString();
+
+      // Show verify fee if element exists
+      const feeEl = document.getElementById('verifyFee');
+      if (feeEl && config.verifyFee !== undefined) {
+        feeEl.textContent = config.verifyFee === 0
+          ? 'Free'
+          : (config.verifyFee / 1_000_000_000).toFixed(6) + ' SOL';
+      }
       document.getElementById('statusDot').className = 'status-dot dot-green';
       const rpcUrl = await getRpcUrl();
       const network = rpcUrl.includes('devnet') ? 'devnet' : rpcUrl.includes('testnet') ? 'testnet' : 'mainnet';

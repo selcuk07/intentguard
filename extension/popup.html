@@ -163,6 +163,10 @@
         <div class="stat-num" id="totalVerifies">—</div>
         <div class="stat-label">Total Verifies</div>
       </div>
+      <div class="stat-box">
+        <div class="stat-num" id="verifyFee">—</div>
+        <div class="stat-label">Verify Fee</div>
+      </div>
     </div>
   </div>
 
@@ -178,6 +182,22 @@
   <div class="section" id="resultSection" style="display: none; padding-top: 0;">
     <div class="section-title">Result</div>
     <div id="resultContent"></div>
+  </div>
+
+  <!-- Device Pairing -->
+  <div class="section" style="padding-top: 0;">
+    <div class="section-title">Paired Devices</div>
+    <div id="pairedDevices" style="margin-bottom: 8px;">
+      <div class="empty" style="font-size: 12px; padding: 8px 0;">Loading...</div>
+    </div>
+    <button class="btn btn-secondary" id="pairBtn" style="margin-top: 4px;">Pair Mobile Device</button>
+    <div id="pairQrSection" style="display: none; margin-top: 10px; text-align: center;">
+      <div style="background: #fff; border-radius: 8px; padding: 12px; display: inline-block;">
+        <canvas id="pairQrCanvas" width="200" height="200"></canvas>
+      </div>
+      <p style="font-size: 11px; color: #64748b; margin-top: 8px;">Scan with IntentGuard mobile app</p>
+      <button class="btn btn-secondary" id="cancelPairBtn" style="width: auto; padding: 6px 16px; margin-top: 6px;">Cancel</button>
+    </div>
   </div>
 
   <!-- Bypass List -->
