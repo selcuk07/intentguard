@@ -5,7 +5,9 @@
   "description": "IntentGuard — Solana 2FA: cryptographic intent verification protocol",
   "scripts": {
     "build": "anchor build",
-    "test": "anchor test"
+    "test": "anchor test",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",
@@ -19,9 +21,12 @@
     "@types/chai": "^4.3.19",
     "@types/express": "^5.0.6",
     "@types/mocha": "^10.0.10",
+    "@types/ws": "^8.18.1",
     "chai": "^4.5.0",
     "mocha": "^10.8.2",
     "ts-mocha": "^10.0.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.18",
+    "ws": "^8.19.0"
   }
 }

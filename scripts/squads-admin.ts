@@ -138,6 +138,42 @@ function buildTransferAdminInstruction(
   });
 }
 
+function buildUpdateFeeInstruction(
+  vault: PublicKey,
+  newFee: bigint
+): TransactionInstruction {
+  const [configPda] = findConfigPda();
+  const data = Buffer.alloc(16);
+  disc("update_fee").copy(data, 0);
+  data.writeBigUInt64LE(newFee, 8);
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: configPda, isSigner: false, isWritable: true },
+      { pubkey: vault, isSigner: true, isWritable: true },
+    ],
+    data,
+  });
+}
+
+function buildWithdrawFeesInstruction(
+  vault: PublicKey,
+  amount: bigint
+): TransactionInstruction {
+  const [configPda] = findConfigPda();
+  const data = Buffer.alloc(16);
+  disc("withdraw_fees").copy(data, 0);
+  data.writeBigUInt64LE(amount, 8);
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: configPda, isSigner: false, isWritable: true },
+      { pubkey: vault, isSigner: true, isWritable: true },
+    ],
+    data,
+  });
+}
+
 // ─── Proposal Flow ────────────────────────────────────────────
 
 async function createProposal(
@@ -296,6 +332,8 @@ Commands:
   propose-unpause               Propose unpausing the protocol
   propose-update-config <bal>   Propose updating min_balance (lamports)
   propose-transfer-admin <key>  Propose admin transfer to new pubkey
+  propose-update-fee <lamports> Propose updating verify fee
+  propose-withdraw-fees <amt>   Propose withdrawing accumulated fees
   approve <index>               Approve proposal by transaction index
   execute <index>               Execute approved proposal after time lock
   status [index]                Show multisig or specific proposal status
@@ -371,6 +409,40 @@ Environment:
       await createProposal(
         connection, signer, multisigPda, vaultPda, ix,
         `Transfer admin to ${newAdminStr}`
+      );
+      break;
+    }
+
+    case "propose-update-fee": {
+      const feeStr = args[1];
+      if (!feeStr) {
+        console.error("Usage: propose-update-fee <fee_lamports>");
+        process.exit(1);
+      }
+      const feeLamports = BigInt(feeStr);
+      if (feeLamports > 100_000_000n) {
+        console.error("ERROR: verify fee cannot exceed 0.1 SOL (100000000 lamports)");
+        process.exit(1);
+      }
+      const ix = buildUpdateFeeInstruction(vaultPda, feeLamports);
+      await createProposal(
+        connection, signer, multisigPda, vaultPda, ix,
+        `Update verify fee to ${feeLamports} lamports`
+      );
+      break;
+    }
+
+    case "propose-withdraw-fees": {
+      const amtStr = args[1];
+      if (!amtStr) {
+        console.error("Usage: propose-withdraw-fees <amount_lamports>");
+        process.exit(1);
+      }
+      const amount = BigInt(amtStr);
+      const ix = buildWithdrawFeesInstruction(vaultPda, amount);
+      await createProposal(
+        connection, signer, multisigPda, vaultPda, ix,
+        `Withdraw ${amount} lamports of accumulated fees`
       );
       break;
     }

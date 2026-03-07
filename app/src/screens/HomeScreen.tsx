@@ -8,9 +8,10 @@ interface Props {
   onScanPress: () => void;
   onTestPress?: () => void;
   onHistoryPress: () => void;
+  onPairPress?: () => void;
 }
 
-export default function HomeScreen({ onScanPress, onTestPress, onHistoryPress }: Props) {
+export default function HomeScreen({ onScanPress, onTestPress, onHistoryPress, onPairPress }: Props) {
   const [wallet, setWallet] = useState<Keypair | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -63,6 +64,14 @@ export default function HomeScreen({ onScanPress, onTestPress, onHistoryPress }:
         <TouchableOpacity style={styles.testButton} onPress={onTestPress}>
           <Ionicons name="flask-outline" size={20} color="#f59e0b" />
           <Text style={styles.testButtonText}>Test Intent (Devnet)</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Pair Extension */}
+      {onPairPress && (
+        <TouchableOpacity style={styles.pairButton} onPress={onPairPress}>
+          <Ionicons name="link-outline" size={20} color="#6366f1" />
+          <Text style={styles.pairButtonText}>Pair Browser Extension</Text>
         </TouchableOpacity>
       )}
 
@@ -167,6 +176,24 @@ const styles = StyleSheet.create({
   },
   testButtonText: {
     color: '#f59e0b',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  pairButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#6366f1',
+    width: '100%',
+  },
+  pairButtonText: {
+    color: '#6366f1',
     fontSize: 16,
     fontWeight: '600',
   },
