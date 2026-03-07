@@ -29,14 +29,67 @@
 import express from 'express';
 import crypto from 'crypto';
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import {
+  initBilling,
+  createCheckoutSession,
+  createPortalSession,
+  handleWebhook,
+  getApiKeyFromSession,
+  getSubscriberByKey,
+  getSubscriberByEmail,
+  getSubscribers,
+  isSubscriptionActive,
+} from './stripe-billing';
 
 const app = express();
-app.use(express.json());
 
 const PORT = parseInt(process.env.PORT || '4000', 10);
 const API_SECRET = process.env.API_SECRET || 'dev-secret-change-me';
 const RPC_URL = process.env.RPC_URL || 'https://api.mainnet-beta.solana.com';
 const PROGRAM_ID = '4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7';
+const BASE_URL = process.env.BASE_URL || 'https://intentshield.xyz';
+
+// Initialize Stripe billing if configured
+const STRIPE_KEY = process.env.STRIPE_SECRET_KEY;
+if (STRIPE_KEY) {
+  initBilling({
+    stripeSecretKey: STRIPE_KEY,
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
+    priceIds: {
+      proMonthly: process.env.STRIPE_PRO_MONTHLY || '',
+      proYearly: process.env.STRIPE_PRO_YEARLY || '',
+      enterpriseMonthly: process.env.STRIPE_ENT_MONTHLY || '',
+      enterpriseYearly: process.env.STRIPE_ENT_YEARLY || '',
+    },
+    baseUrl: BASE_URL,
+  });
+  console.log('[billing] Stripe billing enabled');
+} else {
+  console.log('[billing] Stripe not configured (set STRIPE_SECRET_KEY to enable)');
+}
+
+// Stripe webhook needs raw body — must be before express.json()
+app.post('/api/v1/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  if (!STRIPE_KEY) {
+    res.status(503).json({ error: 'Billing not configured' });
+    return;
+  }
+  const sig = req.headers['stripe-signature'] as string;
+  if (!sig) {
+    res.status(400).json({ error: 'Missing stripe-signature header' });
+    return;
+  }
+  try {
+    const result = await handleWebhook(req.body, sig);
+    console.log(`[billing] Webhook: ${result.event} -> ${result.action}`);
+    res.json({ received: true, ...result });
+  } catch (err: any) {
+    console.error('[billing] Webhook error:', err.message);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.use(express.json());
 
 const connection = new Connection(RPC_URL, 'confirmed');
 
@@ -135,7 +188,31 @@ function authenticate(req: express.Request, res: express.Response, next: express
   }
 
   const key = authHeader.slice(7);
-  const apiKey = apiKeys.get(key);
+  let apiKey = apiKeys.get(key);
+
+  // Check Stripe subscribers if not found in manual keys
+  if (!apiKey) {
+    const sub = getSubscriberByKey(key);
+    if (sub && (sub.status === 'active' || sub.status === 'past_due')) {
+      // Create a compatible ApiKey object from Stripe subscriber
+      apiKey = {
+        key: sub.apiKey,
+        name: sub.email,
+        tier: sub.tier,
+        createdAt: sub.createdAt,
+        requestCount: sub.requestCount,
+        lastUsed: sub.lastUsed,
+      };
+      // Sync request count back to subscriber
+      const origSub = sub;
+      const origApiKey = apiKey;
+      res.on('finish', () => {
+        origSub.requestCount = origApiKey.requestCount;
+        origSub.lastUsed = origApiKey.lastUsed;
+      });
+    }
+  }
+
   if (!apiKey) {
     res.status(403).json({ error: 'Invalid API key' });
     return;
@@ -228,6 +305,87 @@ app.get('/api/v1/pricing', (_req, res) => {
       description: 'Per-verify on-chain fee (separate from API pricing)',
       note: 'Protocol fee is set by admin and paid in SOL on-chain',
     },
+  });
+});
+
+// ─── Billing Endpoints (no auth needed) ──────────────────────
+
+// Create checkout session
+app.post('/api/v1/checkout', async (req, res) => {
+  if (!STRIPE_KEY) {
+    res.status(503).json({ error: 'Billing not configured' });
+    return;
+  }
+  const { email, tier, interval } = req.body;
+  if (!tier || !['pro', 'enterprise'].includes(tier)) {
+    res.status(400).json({ error: 'tier must be "pro" or "enterprise"' });
+    return;
+  }
+  if (interval && !['monthly', 'yearly'].includes(interval)) {
+    res.status(400).json({ error: 'interval must be "monthly" or "yearly"' });
+    return;
+  }
+  try {
+    const session = await createCheckoutSession({
+      email,
+      tier,
+      interval: interval || 'monthly',
+    });
+    res.json(session);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get API key after successful checkout
+app.get('/api/v1/checkout/:sessionId', async (req, res) => {
+  if (!STRIPE_KEY) {
+    res.status(503).json({ error: 'Billing not configured' });
+    return;
+  }
+  try {
+    const result = await getApiKeyFromSession(req.params.sessionId);
+    if (!result) {
+      res.status(404).json({ error: 'Session not found or payment not yet processed' });
+      return;
+    }
+    res.json({
+      apiKey: result.apiKey,
+      tier: result.tier,
+      email: result.email,
+      message: 'Save this API key securely. It will not be shown again.',
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Customer portal (manage subscription)
+app.post('/api/v1/billing/portal', authenticate, async (req, res) => {
+  const apiKey = (req as any).apiKey as ApiKey;
+  try {
+    const url = await createPortalSession(apiKey.key);
+    res.json({ url });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Subscription status
+app.get('/api/v1/billing/status', authenticate, (req, res) => {
+  const apiKey = (req as any).apiKey as ApiKey;
+  const sub = getSubscriberByKey(apiKey.key);
+  if (!sub) {
+    res.json({ tier: apiKey.tier, billing: 'manual', status: 'active' });
+    return;
+  }
+  res.json({
+    tier: sub.tier,
+    billing: 'stripe',
+    status: sub.status,
+    email: sub.email,
+    createdAt: sub.createdAt,
+    requestCount: sub.requestCount,
   });
 });
 
@@ -510,11 +668,19 @@ app.listen(PORT, () => {
   ${'═'.repeat(45)}
   Port:      ${PORT}
   RPC:       ${RPC_URL}
+  Stripe:    ${STRIPE_KEY ? 'enabled' : 'disabled'}
   Admin key: ${adminKey.slice(0, 8)}...
 
   Public endpoints:
     GET  /api/v1/pricing
     GET  /api/v1/stats
+
+  Billing:
+    POST /api/v1/checkout          Create Stripe checkout
+    GET  /api/v1/checkout/:id      Get API key after payment
+    POST /api/v1/stripe-webhook    Stripe webhook receiver
+    POST /api/v1/billing/portal    Customer portal (auth)
+    GET  /api/v1/billing/status    Subscription status (auth)
 
   Authenticated (Bearer token):
     POST /api/v1/verify

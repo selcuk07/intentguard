@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IntentGuard Pricing</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0f; color: #e0e0e0; min-height: 100vh; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 40px 20px; }
+    h1 { text-align: center; font-size: 2.5rem; margin-bottom: 8px; color: #fff; }
+    .subtitle { text-align: center; color: #888; margin-bottom: 40px; font-size: 1.1rem; }
+    .toggle { display: flex; justify-content: center; gap: 12px; margin-bottom: 40px; align-items: center; }
+    .toggle label { cursor: pointer; color: #888; font-size: 0.95rem; }
+    .toggle input { display: none; }
+    .toggle .switch { width: 48px; height: 26px; background: #333; border-radius: 13px; position: relative; cursor: pointer; transition: background 0.3s; }
+    .toggle .switch::after { content: ''; width: 22px; height: 22px; background: #9945FF; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: transform 0.3s; }
+    .toggle input:checked + .switch { background: #444; }
+    .toggle input:checked + .switch::after { transform: translateX(22px); }
+    .save-badge { background: #14F195; color: #000; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+    .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+    @media (max-width: 768px) { .plans { grid-template-columns: 1fr; } }
+    .plan { background: #141420; border: 1px solid #2a2a3a; border-radius: 16px; padding: 32px 28px; position: relative; transition: border-color 0.3s, transform 0.2s; }
+    .plan:hover { border-color: #9945FF; transform: translateY(-2px); }
+    .plan.popular { border-color: #9945FF; }
+    .plan.popular::before { content: 'Most Popular'; position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #9945FF; color: #fff; padding: 4px 16px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
+    .plan h2 { font-size: 1.5rem; margin-bottom: 8px; color: #fff; }
+    .plan .price { font-size: 2.5rem; font-weight: 700; color: #fff; margin: 16px 0 4px; }
+    .plan .price span { font-size: 1rem; color: #888; font-weight: 400; }
+    .plan .period { color: #888; font-size: 0.85rem; margin-bottom: 24px; }
+    .plan ul { list-style: none; margin-bottom: 28px; }
+    .plan li { padding: 6px 0; color: #bbb; font-size: 0.95rem; }
+    .plan li::before { content: '\2713'; color: #14F195; margin-right: 10px; font-weight: 700; }
+    .plan li.no::before { content: '\2717'; color: #555; }
+    .plan li.no { color: #555; }
+    .btn { display: block; width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; text-align: center; transition: opacity 0.2s; text-decoration: none; }
+    .btn:hover { opacity: 0.85; }
+    .btn-free { background: #2a2a3a; color: #fff; }
+    .btn-pro { background: #9945FF; color: #fff; }
+    .btn-ent { background: linear-gradient(135deg, #9945FF, #14F195); color: #000; }
+    .faq { max-width: 700px; margin: 60px auto 0; }
+    .faq h2 { text-align: center; margin-bottom: 24px; color: #fff; }
+    .faq-item { border-bottom: 1px solid #2a2a3a; padding: 16px 0; }
+    .faq-item summary { cursor: pointer; font-weight: 500; color: #ccc; font-size: 1rem; }
+    .faq-item p { margin-top: 10px; color: #888; line-height: 1.6; font-size: 0.95rem; }
+    .footer { text-align: center; margin-top: 60px; padding: 20px; color: #555; font-size: 0.85rem; }
+    .footer a { color: #9945FF; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Simple, transparent pricing</h1>
+    <p class="subtitle">Protect your Solana transactions with on-chain 2FA</p>
+
+    <div class="toggle">
+      <label>Monthly</label>
+      <input type="checkbox" id="annual-toggle">
+      <div class="switch" onclick="document.getElementById('annual-toggle').click()"></div>
+      <label>Yearly <span class="save-badge">Save 20%</span></label>
+    </div>
+
+    <div class="plans">
+      <!-- Free -->
+      <div class="plan">
+        <h2>Free</h2>
+        <div class="price">$0<span>/mo</span></div>
+        <div class="period">Free forever</div>
+        <ul>
+          <li>10 API requests/min</li>
+          <li>Intent verification</li>
+          <li>Protocol stats</li>
+          <li>Community support</li>
+          <li class="no">Analytics dashboard</li>
+          <li class="no">Webhooks</li>
+          <li class="no">Priority support</li>
+        </ul>
+        <a href="/docs/quickstart.html" class="btn btn-free">Get Started Free</a>
+      </div>
+
+      <!-- Pro -->
+      <div class="plan popular">
+        <h2>Pro</h2>
+        <div class="price" id="pro-price">$49<span>/mo</span></div>
+        <div class="period" id="pro-period">Billed monthly</div>
+        <ul>
+          <li>100 API requests/min</li>
+          <li>Intent verification</li>
+          <li>Protocol stats</li>
+          <li>Analytics dashboard</li>
+          <li>Up to 10 webhooks</li>
+          <li>Priority support</li>
+          <li class="no">Custom deployment</li>
+        </ul>
+        <button class="btn btn-pro" onclick="checkout('pro')">Subscribe to Pro</button>
+      </div>
+
+      <!-- Enterprise -->
+      <div class="plan">
+        <h2>Enterprise</h2>
+        <div class="price" id="ent-price">$299<span>/mo</span></div>
+        <div class="period" id="ent-period">Billed monthly</div>
+        <ul>
+          <li>Unlimited API requests</li>
+          <li>Intent verification</li>
+          <li>Protocol stats</li>
+          <li>Analytics dashboard</li>
+          <li>Up to 100 webhooks</li>
+          <li>Priority support + SLA</li>
+          <li>Custom deployment</li>
+        </ul>
+        <button class="btn btn-ent" onclick="checkout('enterprise')">Subscribe to Enterprise</button>
+      </div>
+    </div>
+
+    <div class="faq">
+      <h2>FAQ</h2>
+      <details class="faq-item">
+        <summary>What is an API request?</summary>
+        <p>Each call to our verification, intent lookup, or analytics endpoints counts as one request. Protocol stats and pricing endpoints are free and don't count.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Is there a free trial for Pro?</summary>
+        <p>The Free tier gives you full access to core verification features. Upgrade to Pro when you need higher rate limits, analytics, or webhooks.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Can I cancel anytime?</summary>
+        <p>Yes. Cancel from your billing portal at any time. Your access continues until the end of the billing period.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Do you accept crypto payments?</summary>
+        <p>SOL and USDC payments are coming soon. For now, we accept all major credit cards via Stripe.</p>
+      </details>
+      <details class="faq-item">
+        <summary>What about the on-chain protocol fee?</summary>
+        <p>The on-chain verify_intent fee is separate from API pricing. It's currently set to 0 SOL and is governed by the protocol admin. API subscription covers hosted services (rate limits, analytics, webhooks).</p>
+      </details>
+    </div>
+
+    <div class="footer">
+      <a href="/">Home</a> &middot; <a href="/docs/">Docs</a> &middot; <a href="/api-docs/">API Reference</a>
+      <br><br>IntentGuard &copy; 2026
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = '';
+    const toggle = document.getElementById('annual-toggle');
+    const proPrice = document.getElementById('pro-price');
+    const proPeriod = document.getElementById('pro-period');
+    const entPrice = document.getElementById('ent-price');
+    const entPeriod = document.getElementById('ent-period');
+
+    toggle.addEventListener('change', () => {
+      if (toggle.checked) {
+        proPrice.innerHTML = '$39<span>/mo</span>';
+        proPeriod.textContent = '$470 billed yearly';
+        entPrice.innerHTML = '$249<span>/mo</span>';
+        entPeriod.textContent = '$2,990 billed yearly';
+      } else {
+        proPrice.innerHTML = '$49<span>/mo</span>';
+        proPeriod.textContent = 'Billed monthly';
+        entPrice.innerHTML = '$299<span>/mo</span>';
+        entPeriod.textContent = 'Billed monthly';
+      }
+    });
+
+    async function checkout(tier) {
+      const interval = toggle.checked ? 'yearly' : 'monthly';
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/checkout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tier, interval }),
+        });
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          alert(data.error || 'Checkout failed');
+        }
+      } catch (err) {
+        alert('Connection error. Please try again.');
+      }
+    }
+  </script>
+</body>
+</html>

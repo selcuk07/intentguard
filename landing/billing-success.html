@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subscription Active - IntentGuard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0f; color: #e0e0e0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .card { background: #141420; border: 1px solid #2a2a3a; border-radius: 16px; padding: 48px 40px; max-width: 520px; width: 90%; text-align: center; }
+    .check { width: 64px; height: 64px; background: #14F195; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 32px; color: #000; }
+    h1 { font-size: 1.8rem; margin-bottom: 8px; color: #fff; }
+    .tier { color: #9945FF; font-weight: 600; }
+    p { color: #888; margin: 12px 0; line-height: 1.5; }
+    .key-box { background: #1a1a2e; border: 1px solid #9945FF; border-radius: 8px; padding: 16px; margin: 24px 0; word-break: break-all; font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; font-size: 0.95rem; color: #14F195; cursor: pointer; position: relative; }
+    .key-box:hover { background: #1e1e36; }
+    .key-box .hint { display: block; font-size: 0.75rem; color: #666; margin-top: 8px; font-family: -apple-system, sans-serif; }
+    .copied { position: absolute; top: -8px; right: 12px; background: #14F195; color: #000; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-family: -apple-system, sans-serif; opacity: 0; transition: opacity 0.3s; }
+    .copied.show { opacity: 1; }
+    .warning { background: #2a1a00; border: 1px solid #f5a623; border-radius: 8px; padding: 12px 16px; margin: 16px 0; color: #f5a623; font-size: 0.9rem; text-align: left; }
+    .links { margin-top: 24px; }
+    .links a { color: #9945FF; text-decoration: none; margin: 0 12px; font-size: 0.95rem; }
+    .links a:hover { text-decoration: underline; }
+    .loading { color: #888; }
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #333; border-top-color: #9945FF; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="spinner" style="width:40px;height:40px;margin:0 auto 24px;border-width:3px;"></div>
+    <p class="loading">Processing your subscription...</p>
+  </div>
+
+  <script>
+    async function loadKey() {
+      const params = new URLSearchParams(window.location.search);
+      const sessionId = params.get('session_id');
+      const card = document.getElementById('card');
+
+      if (!sessionId) {
+        card.innerHTML = '<h1>Missing session</h1><p>No checkout session found.</p><div class="links"><a href="/pricing">Back to Pricing</a></div>';
+        return;
+      }
+
+      // Poll for key (webhook may take a moment)
+      let attempts = 0;
+      const maxAttempts = 15;
+
+      while (attempts < maxAttempts) {
+        try {
+          const res = await fetch(`/api/v1/checkout/${sessionId}`);
+          if (res.ok) {
+            const data = await res.json();
+            card.innerHTML = `
+              <div class="check">\u2713</div>
+              <h1>Welcome to <span class="tier">${data.tier.charAt(0).toUpperCase() + data.tier.slice(1)}</span></h1>
+              <p>Your subscription is active. Here's your API key:</p>
+              <div class="key-box" onclick="copyKey(this)" id="key-display">
+                ${data.apiKey}
+                <span class="hint">Click to copy</span>
+                <span class="copied" id="copied-badge">Copied!</span>
+              </div>
+              <div class="warning">
+                Save this key now. For security, it will not be shown again.
+              </div>
+              <p style="font-size:0.9rem">Use it as: <code style="color:#14F195">Authorization: Bearer ${data.apiKey.slice(0, 12)}...</code></p>
+              <div class="links">
+                <a href="/docs/api.html">API Docs</a>
+                <a href="/docs/quickstart.html">Quick Start</a>
+              </div>
+            `;
+            return;
+          }
+        } catch {}
+        attempts++;
+        await new Promise(r => setTimeout(r, 2000));
+      }
+
+      card.innerHTML = `
+        <h1>Almost there</h1>
+        <p>Your payment was received but key generation is taking longer than expected. Please check your email or contact support.</p>
+        <div class="links"><a href="/pricing">Back to Pricing</a></div>
+      `;
+    }
+
+    function copyKey(el) {
+      const key = el.childNodes[0].textContent.trim();
+      navigator.clipboard.writeText(key);
+      const badge = document.getElementById('copied-badge');
+      badge.classList.add('show');
+      setTimeout(() => badge.classList.remove('show'), 2000);
+    }
+
+    loadKey();
+  </script>
+</body>
+</html>
