@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rust CPI Crate — IntentGuard Docs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="topnav">
+    <a href="../index.html" class="topnav-logo"><div class="icon">&#x1f6e1;</div> IntentGuard</a>
+    <div class="topnav-links">
+      <a href="../index.html">Home</a>
+      <a href="../dashboard.html">Dashboard</a>
+      <a href="../api-docs/">API Reference</a>
+      <a href="https://github.com/selcuk07/intentguard" class="gh">GitHub</a>
+    </div>
+  </nav>
+
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Getting Started</div>
+      <a href="index.html">Overview</a>
+      <a href="quickstart.html">Quick Start</a>
+      <a href="architecture.html">Architecture</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">SDK</div>
+      <a href="sdk.html">TypeScript SDK</a>
+      <a href="cpi.html" class="active">Rust CPI Crate</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Integration</div>
+      <a href="examples.html">Examples</a>
+      <a href="widget.html">React Widget</a>
+      <a href="extension.html">Browser Extension</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Protocol</div>
+      <a href="fees.html">Fees &amp; Revenue</a>
+      <a href="admin.html">Admin Operations</a>
+      <a href="security.html">Security</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">API</div>
+      <a href="api.html">Premium API</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <h1>Rust <span class="accent">CPI Crate</span></h1>
+    <p class="subtitle">Cross-program invocation for Anchor programs. Verify intents directly from your on-chain program.</p>
+
+    <pre><code>cargo add intentguard-cpi</code></pre>
+
+    <h2>When to Use CPI</h2>
+    <p>Use CPI when your <strong>on-chain program</strong> needs to verify an intent as part of its own logic. For example, a DEX program that requires IntentGuard verification before executing a swap.</p>
+
+    <div class="callout">
+      <p><strong>TypeScript-only?</strong> If you're building a frontend dApp, use the <a href="sdk.html">TypeScript SDK</a> instead. CPI is for on-chain Rust programs.</p>
+    </div>
+
+    <h2>Quick Start</h2>
+    <pre><code><span class="kw">use</span> intentguard_cpi::{<span class="fn">verify_intent_cpi</span>, <span class="ty">VerifyAccounts</span>};
+
+<span class="kw">pub fn</span> <span class="fn">handle_protected_swap</span>(ctx: <span class="ty">Context</span>&lt;<span class="ty">ProtectedSwap</span>&gt;, intent_hash: [<span class="ty">u8</span>; <span class="num">32</span>]) -> <span class="ty">Result</span>&lt;()&gt; {
+    <span class="cm">// Verify the user's intent before executing</span>
+    <span class="fn">verify_intent_cpi</span>(
+        <span class="ty">VerifyAccounts</span> {
+            intent_commit: ctx.accounts.intent_commit.<span class="fn">to_account_info</span>(),
+            config: ctx.accounts.guard_config.<span class="fn">to_account_info</span>(),
+            user: ctx.accounts.user.<span class="fn">to_account_info</span>(),
+            system_program: ctx.accounts.system_program.<span class="fn">to_account_info</span>(),
+            intent_guard_program: ctx.accounts.intent_guard.<span class="fn">to_account_info</span>(),
+        },
+        intent_hash,
+    )?;
+
+    <span class="cm">// Intent verified — safe to proceed with swap</span>
+    <span class="fn">execute_swap</span>(ctx)
+}
+</code></pre>
+
+    <h2>CPI Functions</h2>
+
+    <h3>verify_intent_cpi(accounts, intent_hash)</h3>
+    <p>Verifies an intent via CPI. Closes the IntentCommit PDA and returns rent to the user.</p>
+    <table>
+      <thead><tr><th>Param</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>accounts</code></td><td><code>VerifyAccounts</code></td><td>Required accounts for verification</td></tr>
+        <tr><td><code>intent_hash</code></td><td><code>[u8; 32]</code></td><td>Expected intent hash</td></tr>
+      </tbody>
+    </table>
+
+    <h3>commit_intent_cpi(accounts, app_id, intent_hash, ttl)</h3>
+    <p>Commits an intent via CPI. Used when your program needs to commit on behalf of the user.</p>
+
+    <h3>revoke_intent_cpi(accounts, app_id)</h3>
+    <p>Revokes a pending intent via CPI.</p>
+
+    <h3>update_fee_cpi(accounts, new_fee)</h3>
+    <p>Updates the verify fee (admin only).</p>
+
+    <h3>withdraw_fees_cpi(accounts, amount)</h3>
+    <p>Withdraws accumulated fees (admin only).</p>
+
+    <h2>Account Structs</h2>
+    <pre><code><span class="kw">pub struct</span> <span class="ty">VerifyAccounts</span>&lt;'a&gt; {
+    <span class="kw">pub</span> intent_commit: <span class="ty">AccountInfo</span>&lt;'a&gt;,      <span class="cm">// mut</span>
+    <span class="kw">pub</span> config: <span class="ty">AccountInfo</span>&lt;'a&gt;,              <span class="cm">// mut</span>
+    <span class="kw">pub</span> user: <span class="ty">AccountInfo</span>&lt;'a&gt;,                <span class="cm">// signer, mut</span>
+    <span class="kw">pub</span> system_program: <span class="ty">AccountInfo</span>&lt;'a&gt;,
+    <span class="kw">pub</span> intent_guard_program: <span class="ty">AccountInfo</span>&lt;'a&gt;,
+}
+
+<span class="kw">pub struct</span> <span class="ty">AdminAccounts</span>&lt;'a&gt; {
+    <span class="kw">pub</span> config: <span class="ty">AccountInfo</span>&lt;'a&gt;,              <span class="cm">// mut</span>
+    <span class="kw">pub</span> admin: <span class="ty">AccountInfo</span>&lt;'a&gt;,               <span class="cm">// signer</span>
+    <span class="kw">pub</span> intent_guard_program: <span class="ty">AccountInfo</span>&lt;'a&gt;,
+}
+</code></pre>
+
+    <h2>PDA Helpers</h2>
+    <pre><code><span class="kw">use</span> intentguard_cpi::{<span class="fn">find_intent_commit_pda</span>, <span class="fn">find_config_pda</span>};
+
+<span class="kw">let</span> (intent_pda, bump) = <span class="fn">find_intent_commit_pda</span>(&user_key, &app_id, &program_id);
+<span class="kw">let</span> (config_pda, bump) = <span class="fn">find_config_pda</span>(&program_id);
+</code></pre>
+
+    <h2>Verify Macro</h2>
+    <p>For simple inline verification, use the <code>intent_guard_verify!</code> macro:</p>
+    <pre><code><span class="kw">use</span> intentguard_cpi::<span class="fn">intent_guard_verify</span>!;
+
+<span class="cm">// One-liner verification</span>
+<span class="fn">intent_guard_verify!</span>(ctx, intent_hash);
+</code></pre>
+
+    <h2>Discriminators</h2>
+    <table>
+      <thead><tr><th>Instruction</th><th>Discriminator (8 bytes)</th></tr></thead>
+      <tbody>
+        <tr><td><code>commit_intent</code></td><td><code>[175, 152, 13, 10, 40, 234, 201, 8]</code></td></tr>
+        <tr><td><code>verify_intent</code></td><td><code>[240, 198, 213, 223, 94, 7, 247, 247]</code></td></tr>
+        <tr><td><code>revoke_intent</code></td><td><code>[42, 248, 79, 132, 107, 96, 193, 153]</code></td></tr>
+        <tr><td><code>update_fee</code></td><td><code>[232, 253, 195, 247, 148, 212, 73, 222]</code></td></tr>
+        <tr><td><code>withdraw_fees</code></td><td><code>[198, 212, 171, 109, 144, 215, 174, 89]</code></td></tr>
+      </tbody>
+    </table>
+  </main>
+
+</body>
+</html>

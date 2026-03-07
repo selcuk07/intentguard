@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>React Widget — IntentGuard Docs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="topnav">
+    <a href="../index.html" class="topnav-logo"><div class="icon">&#x1f6e1;</div> IntentGuard</a>
+    <div class="topnav-links">
+      <a href="../index.html">Home</a><a href="../dashboard.html">Dashboard</a><a href="../api-docs/">API Reference</a>
+      <a href="https://github.com/selcuk07/intentguard" class="gh">GitHub</a>
+    </div>
+  </nav>
+
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Getting Started</div>
+      <a href="index.html">Overview</a><a href="quickstart.html">Quick Start</a><a href="architecture.html">Architecture</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">SDK</div>
+      <a href="sdk.html">TypeScript SDK</a><a href="cpi.html">Rust CPI Crate</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Integration</div>
+      <a href="examples.html">Examples</a><a href="widget.html" class="active">React Widget</a><a href="extension.html">Browser Extension</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Protocol</div>
+      <a href="fees.html">Fees &amp; Revenue</a><a href="admin.html">Admin Operations</a><a href="security.html">Security</a>
+    </div>
+    <div class="sidebar-section"><div class="sidebar-label">API</div><a href="api.html">Premium API</a></div>
+  </aside>
+
+  <main class="main">
+    <h1>React <span class="accent">Widget</span></h1>
+    <p class="subtitle">Drop-in IntentGuardButton component for React dApps. Shows QR, polls for commit, and returns verified status.</p>
+
+    <h2>Install</h2>
+    <pre><code>npm install intentguard-sdk @solana/web3.js</code></pre>
+
+    <h2>Basic Usage</h2>
+    <pre><code><span class="kw">import</span> { <span class="fn">IntentGuardButton</span> } <span class="kw">from</span> <span class="str">'intentguard-sdk/react'</span>;
+
+<span class="kw">function</span> <span class="fn">SwapPage</span>() {
+  <span class="kw">return</span> (
+    &lt;<span class="fn">IntentGuardButton</span>
+      <span class="ty">action</span>=<span class="str">"swap"</span>
+      <span class="ty">params</span>={{ amount: <span class="num">1_000_000_000</span>, mint: <span class="str">'EPjFWdd5...'</span> }}
+      <span class="ty">appId</span>=<span class="str">"JUP6Lkb..."</span>
+      <span class="ty">user</span>={walletPublicKey}
+      <span class="ty">connection</span>={connection}
+      <span class="ty">onVerified</span>={(hash) => <span class="fn">executeSwap</span>(hash)}
+      <span class="ty">onExpired</span>={() => <span class="fn">showError</span>(<span class="str">'Intent expired'</span>)}
+    /&gt;
+  );
+}
+</code></pre>
+
+    <h2>Props</h2>
+    <table>
+      <thead><tr><th>Prop</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>action</code></td><td><code>string</code></td><td>Yes</td><td>Action name for hash computation</td></tr>
+        <tr><td><code>params</code></td><td><code>object</code></td><td>Yes</td><td>Action parameters for hash computation</td></tr>
+        <tr><td><code>appId</code></td><td><code>string | PublicKey</code></td><td>Yes</td><td>Target app program ID</td></tr>
+        <tr><td><code>user</code></td><td><code>PublicKey</code></td><td>Yes</td><td>User's wallet public key</td></tr>
+        <tr><td><code>connection</code></td><td><code>Connection</code></td><td>Yes</td><td>Solana RPC connection</td></tr>
+        <tr><td><code>onVerified</code></td><td><code>(hash) => void</code></td><td>Yes</td><td>Called when intent is verified on-chain</td></tr>
+        <tr><td><code>onExpired</code></td><td><code>() => void</code></td><td>No</td><td>Called when intent TTL expires</td></tr>
+        <tr><td><code>ttl</code></td><td><code>number</code></td><td>No</td><td>TTL in seconds (default 300)</td></tr>
+        <tr><td><code>pollInterval</code></td><td><code>number</code></td><td>No</td><td>Poll interval in ms (default 2000)</td></tr>
+        <tr><td><code>allowManualHash</code></td><td><code>boolean</code></td><td>No</td><td>Show manual hash entry fallback for CLI users</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Widget States</h2>
+    <ol>
+      <li><strong>idle</strong> &mdash; Button shows "Verify with IntentGuard"</li>
+      <li><strong>show_qr</strong> &mdash; QR code displayed for mobile scanning</li>
+      <li><strong>waiting</strong> &mdash; Polling for on-chain commit detection</li>
+      <li><strong>verified</strong> &mdash; Intent verified, <code>onVerified</code> callback fires</li>
+      <li><strong>expired</strong> &mdash; TTL passed, <code>onExpired</code> callback fires</li>
+      <li><strong>manual_input</strong> &mdash; Manual hex hash entry (CLI fallback)</li>
+    </ol>
+
+    <h2>QR Payload Format</h2>
+    <pre><code>{
+  <span class="str">"protocol"</span>: <span class="str">"intentguard"</span>,
+  <span class="str">"version"</span>: <span class="num">1</span>,
+  <span class="str">"app"</span>: <span class="str">"JUP6Lkb..."</span>,
+  <span class="str">"action"</span>: <span class="str">"swap"</span>,
+  <span class="str">"params"</span>: { <span class="str">"amount"</span>: <span class="num">1000000000</span>, ... },
+  <span class="str">"display"</span>: { <span class="str">"title"</span>: <span class="str">"Swap 1 SOL"</span>, <span class="str">"description"</span>: <span class="str">"..."</span> }
+}
+</code></pre>
+    <p>The mobile app scans this QR, shows the human-readable display, and commits the intent hash on-chain after biometric confirmation.</p>
+
+    <h2>Deep Links</h2>
+    <p>For direct mobile integration without QR scanning:</p>
+    <pre><code>intentguard://commit?payload=<span class="str">base64_encoded_qr_payload</span></code></pre>
+  </main>
+
+</body>
+</html>

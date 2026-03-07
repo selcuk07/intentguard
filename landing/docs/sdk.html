@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TypeScript SDK — IntentGuard Docs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="topnav">
+    <a href="../index.html" class="topnav-logo"><div class="icon">&#x1f6e1;</div> IntentGuard</a>
+    <div class="topnav-links">
+      <a href="../index.html">Home</a>
+      <a href="../dashboard.html">Dashboard</a>
+      <a href="../api-docs/">API Reference</a>
+      <a href="https://github.com/selcuk07/intentguard" class="gh">GitHub</a>
+    </div>
+  </nav>
+
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Getting Started</div>
+      <a href="index.html">Overview</a>
+      <a href="quickstart.html">Quick Start</a>
+      <a href="architecture.html">Architecture</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">SDK</div>
+      <a href="sdk.html" class="active">TypeScript SDK</a>
+      <a href="cpi.html">Rust CPI Crate</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Integration</div>
+      <a href="examples.html">Examples</a>
+      <a href="widget.html">React Widget</a>
+      <a href="extension.html">Browser Extension</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Protocol</div>
+      <a href="fees.html">Fees &amp; Revenue</a>
+      <a href="admin.html">Admin Operations</a>
+      <a href="security.html">Security</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">API</div>
+      <a href="api.html">Premium API</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <h1>TypeScript <span class="accent">SDK</span></h1>
+    <p class="subtitle">No Anchor dependency. CJS + ESM dual output. Zero external dependencies.</p>
+
+    <pre><code>npm install intentguard-sdk</code></pre>
+
+    <h2>Hashing</h2>
+
+    <h3>computeIntentHash(action, params)</h3>
+    <p>Computes a deterministic SHA-256 hash of an intent. Uses length-prefixed encoding to prevent concatenation ambiguity attacks.</p>
+    <pre><code><span class="kw">import</span> { <span class="fn">computeIntentHash</span> } <span class="kw">from</span> <span class="str">'intentguard-sdk'</span>;
+
+<span class="kw">const</span> hash: <span class="ty">number</span>[] = <span class="fn">computeIntentHash</span>(<span class="str">'swap'</span>, {
+  amount: <span class="num">1_000_000_000</span>,
+  mint: <span class="str">'EPjFWdd5...'</span>,
+});
+<span class="cm">// Returns 32-byte array (number[])</span>
+</code></pre>
+    <table>
+      <thead><tr><th>Param</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>action</code></td><td><code>string</code></td><td>Action name (e.g. "swap", "transfer", "stake")</td></tr>
+        <tr><td><code>params</code></td><td><code>Record&lt;string, any&gt;</code></td><td>Parameters object. Keys are sorted for determinism.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Instructions</h2>
+
+    <h3>createCommitIntentInstruction(user, appId, hash, ttl?, programId?)</h3>
+    <p>Creates a <code>commit_intent</code> instruction. Commits the intent hash on-chain with a TTL.</p>
+    <pre><code><span class="kw">const</span> ix = <span class="fn">createCommitIntentInstruction</span>(
+  userPubkey,    <span class="cm">// Signer wallet</span>
+  appId,         <span class="cm">// Target app program ID</span>
+  hash,          <span class="cm">// 32-byte intent hash</span>
+  <span class="num">300</span>,           <span class="cm">// TTL seconds (30-3600, default 300)</span>
+);
+</code></pre>
+    <table>
+      <thead><tr><th>Param</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>user</code></td><td><code>PublicKey</code></td><td>&mdash;</td><td>Wallet committing the intent (signer)</td></tr>
+        <tr><td><code>appId</code></td><td><code>PublicKey</code></td><td>&mdash;</td><td>Target application identifier</td></tr>
+        <tr><td><code>hash</code></td><td><code>number[] | Uint8Array</code></td><td>&mdash;</td><td>32-byte SHA-256 intent hash</td></tr>
+        <tr><td><code>ttl</code></td><td><code>number</code></td><td><code>300</code></td><td>Time-to-live in seconds</td></tr>
+        <tr><td><code>programId</code></td><td><code>PublicKey</code></td><td>devnet ID</td><td>IntentGuard program ID</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Accounts:</strong> intentPda (w), configPda (w), user (s,w), systemProgram</p>
+    <p><strong>Data:</strong> discriminator(8) + appId(32) + hash(32) + ttl(8) = 80 bytes</p>
+
+    <h3>createVerifyIntentInstruction(user, appId, hash, programId?)</h3>
+    <p>Creates a <code>verify_intent</code> instruction. Verifies hash match, closes the PDA, and collects fee.</p>
+    <pre><code><span class="kw">const</span> ix = <span class="fn">createVerifyIntentInstruction</span>(userPubkey, appId, hash);
+</code></pre>
+    <p><strong>Accounts:</strong> intentPda (w), configPda (w), user (s,w), systemProgram</p>
+    <p><strong>Data:</strong> discriminator(8) + hash(32) = 40 bytes</p>
+
+    <h3>createRevokeIntentInstruction(user, appId, programId?)</h3>
+    <p>Creates a <code>revoke_intent</code> instruction. Closes the PDA and refunds rent to the user.</p>
+    <pre><code><span class="kw">const</span> ix = <span class="fn">createRevokeIntentInstruction</span>(userPubkey, appId);
+</code></pre>
+    <p><strong>Accounts:</strong> intentPda (w), user (s,w)</p>
+    <p><strong>Data:</strong> discriminator(8) + appId(32) = 40 bytes</p>
+
+    <h2>Admin Instructions</h2>
+
+    <h3>createPauseProtocolInstruction(admin, programId?)</h3>
+    <p>Pauses the protocol. Blocks commit and verify; revoke remains available.</p>
+
+    <h3>createUnpauseProtocolInstruction(admin, programId?)</h3>
+    <p>Unpauses the protocol.</p>
+
+    <h3>createTransferAdminInstruction(admin, newAdmin, programId?)</h3>
+    <p>Transfers admin authority to a new pubkey. Cannot transfer to zero address.</p>
+
+    <h3>createUpdateFeeInstruction(admin, newFee, programId?)</h3>
+    <p>Updates the per-verify fee. Maximum 0.1 SOL (100,000,000 lamports).</p>
+    <pre><code><span class="kw">const</span> ix = <span class="fn">createUpdateFeeInstruction</span>(
+  adminPubkey,
+  <span class="num">5_000_000</span>,  <span class="cm">// 0.005 SOL per verify</span>
+);
+</code></pre>
+
+    <h3>createWithdrawFeesInstruction(admin, amount, programId?)</h3>
+    <p>Withdraws accumulated fees from the config PDA. Preserves rent-exempt minimum.</p>
+    <pre><code><span class="kw">const</span> ix = <span class="fn">createWithdrawFeesInstruction</span>(
+  adminPubkey,
+  <span class="num">500_000_000</span>,  <span class="cm">// 0.5 SOL</span>
+);
+</code></pre>
+
+    <h2>PDA Helpers</h2>
+
+    <h3>findIntentCommitPda(user, appId, programId?)</h3>
+    <pre><code><span class="kw">const</span> [pda, bump] = <span class="fn">findIntentCommitPda</span>(userPubkey, appId);
+<span class="cm">// Seeds: [b"intent", user, app_id]</span>
+</code></pre>
+
+    <h3>findConfigPda(programId?)</h3>
+    <pre><code><span class="kw">const</span> [configPda, bump] = <span class="fn">findConfigPda</span>();
+<span class="cm">// Seeds: [b"config"]</span>
+</code></pre>
+
+    <h2>Account Readers</h2>
+
+    <h3>getIntentCommit(connection, user, appId, programId?)</h3>
+    <p>Fetches and deserializes an IntentCommit account. Returns <code>null</code> if not found.</p>
+    <pre><code><span class="kw">const</span> commit = <span class="kw">await</span> <span class="fn">getIntentCommit</span>(connection, userPubkey, appId);
+<span class="kw">if</span> (commit) {
+  console.<span class="fn">log</span>(commit.intentHash);   <span class="cm">// Uint8Array(32)</span>
+  console.<span class="fn">log</span>(commit.committedAt);  <span class="cm">// number (unix timestamp)</span>
+  console.<span class="fn">log</span>(commit.expiresAt);    <span class="cm">// number (unix timestamp)</span>
+}
+</code></pre>
+
+    <h2>App Registry</h2>
+
+    <h3>lookupApp(appId)</h3>
+    <p>Looks up an app by its program ID. Returns name, icon, and verification status. Tries remote registry first, falls back to bundled data.</p>
+    <pre><code><span class="kw">const</span> app = <span class="kw">await</span> <span class="fn">lookupApp</span>(<span class="str">'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4'</span>);
+<span class="cm">// { name: 'Jupiter', icon: '...', verified: true }</span>
+</code></pre>
+
+    <h3>lookupAppSync(appId)</h3>
+    <p>Synchronous lookup using bundled registry only. No network call.</p>
+
+    <h3>isVerified(appId)</h3>
+    <p>Returns <code>true</code> if the app is in the verified registry.</p>
+
+    <h2>Constants</h2>
+    <table>
+      <thead><tr><th>Constant</th><th>Value</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>INTENT_GUARD_PROGRAM_ID</code></td><td><code>4etWfDJ...Pix7</code></td><td>Devnet program ID</td></tr>
+        <tr><td><code>DEFAULT_TTL</code></td><td><code>300</code></td><td>5 minutes</td></tr>
+        <tr><td><code>MAX_TTL</code></td><td><code>3600</code></td><td>1 hour</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <p>Full auto-generated API docs: <a href="../api-docs/"><strong>TypeDoc Reference</strong></a></p>
+    </div>
+  </main>
+
+</body>
+</html>

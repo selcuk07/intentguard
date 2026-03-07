@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Operations — IntentGuard Docs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="topnav">
+    <a href="../index.html" class="topnav-logo"><div class="icon">&#x1f6e1;</div> IntentGuard</a>
+    <div class="topnav-links">
+      <a href="../index.html">Home</a><a href="../dashboard.html">Dashboard</a><a href="../api-docs/">API Reference</a>
+      <a href="https://github.com/selcuk07/intentguard" class="gh">GitHub</a>
+    </div>
+  </nav>
+
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Getting Started</div>
+      <a href="index.html">Overview</a><a href="quickstart.html">Quick Start</a><a href="architecture.html">Architecture</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">SDK</div>
+      <a href="sdk.html">TypeScript SDK</a><a href="cpi.html">Rust CPI Crate</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Integration</div>
+      <a href="examples.html">Examples</a><a href="widget.html">React Widget</a><a href="extension.html">Browser Extension</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Protocol</div>
+      <a href="fees.html">Fees &amp; Revenue</a><a href="admin.html" class="active">Admin Operations</a><a href="security.html">Security</a>
+    </div>
+    <div class="sidebar-section"><div class="sidebar-label">API</div><a href="api.html">Premium API</a></div>
+  </aside>
+
+  <main class="main">
+    <h1>Admin <span class="accent">Operations</span></h1>
+    <p class="subtitle">Protocol administration via direct keypair or Squads multisig.</p>
+
+    <h2>Direct Admin (Devnet)</h2>
+    <p>On devnet, admin operations use a single keypair:</p>
+    <pre><code><span class="cm"># Pause protocol</span>
+npx tsx scripts/fee-admin.ts status
+
+<span class="cm"># Set verify fee</span>
+npx tsx scripts/fee-admin.ts set-fee <span class="num">5000000</span>
+
+<span class="cm"># Withdraw fees</span>
+npx tsx scripts/fee-admin.ts withdraw-all
+
+<span class="cm"># Revenue simulation</span>
+npx tsx scripts/fee-admin.ts simulate <span class="num">5000</span>
+</code></pre>
+
+    <h2>Squads Multisig (Mainnet)</h2>
+    <p>On mainnet, all admin operations go through a Squads multisig with threshold approval and time lock.</p>
+
+    <h3>Setup</h3>
+    <pre><code><span class="cm"># Create multisig and transfer admin</span>
+npx tsx scripts/setup-multisig.ts
+<span class="cm"># Saves multisig-info.json with PDA addresses</span>
+</code></pre>
+    <p>Safety requirements enforced before execution:</p>
+    <ul>
+      <li>Threshold &ge; 2 approvals</li>
+      <li>Members &ge; 2 signers</li>
+      <li>Time lock &ge; 3600 seconds (1 hour)</li>
+    </ul>
+
+    <h3>Proposal Flow</h3>
+    <ol>
+      <li><strong>Propose</strong> &mdash; Any member creates a proposal</li>
+      <li><strong>Approve</strong> &mdash; Members approve until threshold is met</li>
+      <li><strong>Execute</strong> &mdash; After time lock passes, anyone can execute</li>
+    </ol>
+
+    <h3>Available Commands</h3>
+    <table>
+      <thead><tr><th>Command</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>propose-pause</code></td><td>Propose pausing the protocol</td></tr>
+        <tr><td><code>propose-unpause</code></td><td>Propose unpausing</td></tr>
+        <tr><td><code>propose-update-config &lt;lamports&gt;</code></td><td>Propose updating min_balance</td></tr>
+        <tr><td><code>propose-transfer-admin &lt;pubkey&gt;</code></td><td>Propose admin transfer</td></tr>
+        <tr><td><code>propose-update-fee &lt;lamports&gt;</code></td><td>Propose updating verify fee</td></tr>
+        <tr><td><code>propose-withdraw-fees &lt;lamports&gt;</code></td><td>Propose fee withdrawal</td></tr>
+        <tr><td><code>approve &lt;index&gt;</code></td><td>Approve a proposal</td></tr>
+        <tr><td><code>execute &lt;index&gt;</code></td><td>Execute after time lock</td></tr>
+        <tr><td><code>status [index]</code></td><td>Show multisig or proposal status</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Example: Update Fee via Multisig</h3>
+    <pre><code><span class="cm"># Member 1: propose</span>
+npx tsx scripts/squads-admin.ts propose-update-fee <span class="num">5000000</span>
+<span class="cm"># Output: Proposal #3 awaiting 2 approvals. Time lock: 3600s</span>
+
+<span class="cm"># Member 2: approve</span>
+KEYPAIR_PATH=~/.config/solana/member2.json \
+  npx tsx scripts/squads-admin.ts approve <span class="num">3</span>
+
+<span class="cm"># After 1 hour time lock: execute</span>
+npx tsx scripts/squads-admin.ts execute <span class="num">3</span>
+</code></pre>
+
+    <h2>Emergency Pause</h2>
+    <p>In case of a security incident:</p>
+    <pre><code><span class="cm"># Direct (devnet)</span>
+<span class="cm"># Use SDK: createPauseProtocolInstruction(admin)</span>
+
+<span class="cm"># Multisig (mainnet)</span>
+npx tsx scripts/squads-admin.ts propose-pause
+<span class="cm"># All members approve immediately</span>
+npx tsx scripts/squads-admin.ts approve <span class="num">N</span>
+npx tsx scripts/squads-admin.ts execute <span class="num">N</span>
+</code></pre>
+    <div class="callout warn">
+      <p><strong>Pause effects:</strong> Blocks <code>commit_intent</code> and <code>verify_intent</code>. <code>revoke_intent</code> always works so users can recover rent.</p>
+    </div>
+
+    <h2>Config Migration</h2>
+    <p>When the GuardConfig schema changes (e.g., adding fee fields), use <code>migrate_config</code> to realloc the PDA:</p>
+    <pre><code><span class="cm"># Migrates from OLD_SPACE (66) to new SPACE (82)</span>
+<span class="cm"># Preserves all existing data, initializes new fields to defaults</span>
+<span class="cm"># Safe to run multiple times (idempotent)</span>
+</code></pre>
+  </main>
+
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fees &amp; Revenue — IntentGuard Docs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="topnav">
+    <a href="../index.html" class="topnav-logo"><div class="icon">&#x1f6e1;</div> IntentGuard</a>
+    <div class="topnav-links">
+      <a href="../index.html">Home</a>
+      <a href="../dashboard.html">Dashboard</a>
+      <a href="../api-docs/">API Reference</a>
+      <a href="https://github.com/selcuk07/intentguard" class="gh">GitHub</a>
+    </div>
+  </nav>
+
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Getting Started</div>
+      <a href="index.html">Overview</a>
+      <a href="quickstart.html">Quick Start</a>
+      <a href="architecture.html">Architecture</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">SDK</div>
+      <a href="sdk.html">TypeScript SDK</a>
+      <a href="cpi.html">Rust CPI Crate</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Integration</div>
+      <a href="examples.html">Examples</a>
+      <a href="widget.html">React Widget</a>
+      <a href="extension.html">Browser Extension</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Protocol</div>
+      <a href="fees.html" class="active">Fees &amp; Revenue</a>
+      <a href="admin.html">Admin Operations</a>
+      <a href="security.html">Security</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">API</div>
+      <a href="api.html">Premium API</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <h1>Fees &amp; <span class="accent">Revenue</span></h1>
+    <p class="subtitle">Protocol fee mechanics, revenue streams, and fee administration.</p>
+
+    <h2>Protocol Fee</h2>
+    <p>IntentGuard has an optional per-verify fee. When a user calls <code>verify_intent</code>, the protocol can charge a small fee in SOL that is transferred from the user to the config PDA.</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <h4>Default: Free</h4>
+        <p>Fee starts at 0 lamports. Protocol is free to use during adoption phase.</p>
+      </div>
+      <div class="card">
+        <h4>Max: 0.1 SOL</h4>
+        <p>Hard cap enforced on-chain. Admin cannot set fee above 100,000,000 lamports.</p>
+      </div>
+      <div class="card">
+        <h4>Atomic Collection</h4>
+        <p>Fee is collected via system_program::transfer CPI inside verify_intent.</p>
+      </div>
+      <div class="card">
+        <h4>Withdrawable</h4>
+        <p>Admin can withdraw accumulated fees while preserving rent-exempt minimum.</p>
+      </div>
+    </div>
+
+    <h2>How Fees Work</h2>
+    <ol>
+      <li><strong>Admin sets fee</strong> via <code>update_fee</code> instruction (0 to 0.1 SOL)</li>
+      <li><strong>User verifies intent</strong> &mdash; if fee &gt; 0, SOL transfers from user to config PDA</li>
+      <li><strong>total_fees_collected counter</strong> increments atomically</li>
+      <li><strong>Admin withdraws</strong> accumulated fees via <code>withdraw_fees</code></li>
+    </ol>
+
+    <h2>On-Chain State</h2>
+    <p>Fee data is stored in the <code>GuardConfig</code> PDA (82 bytes total):</p>
+    <table>
+      <thead><tr><th>Field</th><th>Offset</th><th>Size</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>verify_fee</code></td><td>65</td><td>8 (u64)</td><td>Fee per verify in lamports</td></tr>
+        <tr><td><code>total_fees_collected</code></td><td>73</td><td>8 (u64)</td><td>Lifetime fees collected</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Fee Administration</h2>
+
+    <h3>Set Fee (Direct)</h3>
+    <pre><code><span class="cm"># Using fee-admin CLI</span>
+npx tsx scripts/fee-admin.ts set-fee <span class="num">5000000</span>  <span class="cm"># 0.005 SOL</span>
+npx tsx scripts/fee-admin.ts status
+</code></pre>
+
+    <h3>Set Fee (Multisig)</h3>
+    <pre><code><span class="cm"># Using Squads multisig (requires threshold approvals)</span>
+npx tsx scripts/squads-admin.ts propose-update-fee <span class="num">5000000</span>
+npx tsx scripts/squads-admin.ts approve <span class="num">1</span>
+npx tsx scripts/squads-admin.ts execute <span class="num">1</span>
+</code></pre>
+
+    <h3>Withdraw Fees</h3>
+    <pre><code><span class="cm"># Direct withdrawal</span>
+npx tsx scripts/fee-admin.ts withdraw <span class="num">500000000</span>  <span class="cm"># 0.5 SOL</span>
+npx tsx scripts/fee-admin.ts withdraw-all
+
+<span class="cm"># Via multisig</span>
+npx tsx scripts/squads-admin.ts propose-withdraw-fees <span class="num">500000000</span>
+</code></pre>
+
+    <h3>Revenue Simulation</h3>
+    <pre><code>npx tsx scripts/fee-admin.ts simulate <span class="num">1000</span>  <span class="cm"># 1000 daily verifies</span>
+</code></pre>
+
+    <h2>Revenue Streams</h2>
+    <table>
+      <thead><tr><th>Stream</th><th>Timeline</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Free Tier</strong></td><td>Launch</td><td>Unlimited commits + verifies (adoption priority)</td></tr>
+        <tr><td><strong>Protocol Fee</strong></td><td>Month 3+</td><td>Optional per-verify fee (governance controlled)</td></tr>
+        <tr><td><strong>Premium API</strong></td><td>Month 3+</td><td>Pro ($49/mo) and Enterprise ($299/mo) tiers</td></tr>
+        <tr><td><strong>Enterprise</strong></td><td>Month 6+</td><td>Custom deployment, SLA, dedicated support</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Safety Guarantees</h2>
+    <ul>
+      <li><strong>MAX_VERIFY_FEE</strong> = 0.1 SOL &mdash; hard cap prevents admin abuse</li>
+      <li><strong>Rent-exempt protection</strong> &mdash; withdrawal preserves config PDA's minimum balance</li>
+      <li><strong>Checked arithmetic</strong> &mdash; total_fees_collected uses <code>checked_add</code> (no overflow)</li>
+      <li><strong>Fee = 0</strong> &mdash; no CPI transfer occurs (zero cost path)</li>
+      <li><strong>Multisig gated</strong> &mdash; fee changes go through Squads proposal flow on mainnet</li>
+    </ul>
+
+    <div class="callout">
+      <p>Live revenue data: <a href="../revenue.html"><strong>Revenue Dashboard</strong></a></p>
+    </div>
+  </main>
+
+</body>
+</html>

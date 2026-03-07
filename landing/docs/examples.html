@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Integration Examples — IntentGuard Docs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="topnav">
+    <a href="../index.html" class="topnav-logo"><div class="icon">&#x1f6e1;</div> IntentGuard</a>
+    <div class="topnav-links">
+      <a href="../index.html">Home</a>
+      <a href="../dashboard.html">Dashboard</a>
+      <a href="../api-docs/">API Reference</a>
+      <a href="https://github.com/selcuk07/intentguard" class="gh">GitHub</a>
+    </div>
+  </nav>
+
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Getting Started</div>
+      <a href="index.html">Overview</a>
+      <a href="quickstart.html">Quick Start</a>
+      <a href="architecture.html">Architecture</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">SDK</div>
+      <a href="sdk.html">TypeScript SDK</a>
+      <a href="cpi.html">Rust CPI Crate</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Integration</div>
+      <a href="examples.html" class="active">Examples</a>
+      <a href="widget.html">React Widget</a>
+      <a href="extension.html">Browser Extension</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Protocol</div>
+      <a href="fees.html">Fees &amp; Revenue</a>
+      <a href="admin.html">Admin Operations</a>
+      <a href="security.html">Security</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">API</div>
+      <a href="api.html">Premium API</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <h1>Integration <span class="accent">Examples</span></h1>
+    <p class="subtitle">Ready-to-use examples for major Solana protocols. Each shows the full commit &rarr; verify flow.</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <h4>Jupiter Swap</h4>
+        <p>DEX swap with intent verification. Protects against amount and slippage manipulation.</p>
+      </div>
+      <div class="card">
+        <h4>Raydium LP</h4>
+        <p>Add/remove liquidity with verified amounts. Prevents pool ratio attacks.</p>
+      </div>
+      <div class="card">
+        <h4>Tensor / Magic Eden</h4>
+        <p>NFT buy, list, bid, and delist with price verification.</p>
+      </div>
+      <div class="card">
+        <h4>Marinade Staking</h4>
+        <p>Stake, unstake, delayed unstake, and claim with amount verification.</p>
+      </div>
+    </div>
+
+    <h2>Jupiter Swap</h2>
+    <p>Source: <code>examples/jupiter-swap.ts</code></p>
+
+    <h3>Intent Hash Format</h3>
+    <pre><code><span class="kw">const</span> hash = <span class="fn">computeIntentHash</span>(<span class="str">'jupiter_swap'</span>, {
+  inputMint: <span class="str">'So11111111111111111111111111111111111111112'</span>,
+  outputMint: <span class="str">'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'</span>,
+  amount: <span class="num">1_000_000_000</span>,
+  slippageBps: <span class="num">50</span>,
+});
+</code></pre>
+
+    <h3>Protected Transaction</h3>
+    <pre><code><span class="cm">// 1. Commit intent (mobile)</span>
+<span class="kw">const</span> commitIx = <span class="fn">createCommitIntentInstruction</span>(user, JUPITER_PROGRAM, hash, <span class="num">300</span>);
+<span class="kw">await</span> <span class="fn">sendTx</span>(commitIx);
+
+<span class="cm">// 2. Build Jupiter swap route</span>
+<span class="kw">const</span> route = <span class="kw">await</span> <span class="fn">fetchJupiterRoute</span>({ inputMint, outputMint, amount, slippageBps });
+<span class="kw">const</span> swapIx = <span class="fn">buildSwapInstruction</span>(route);
+
+<span class="cm">// 3. Verify + swap atomically</span>
+<span class="kw">const</span> verifyIx = <span class="fn">createVerifyIntentInstruction</span>(user, JUPITER_PROGRAM, hash);
+<span class="kw">const</span> tx = <span class="kw">new</span> <span class="fn">Transaction</span>().<span class="fn">add</span>(verifyIx).<span class="fn">add</span>(swapIx);
+</code></pre>
+
+    <div class="callout warn">
+      <p><strong>Attack scenario:</strong> If a compromised frontend changes <code>amount</code> from 1 SOL to 100 SOL, the hash won't match and the entire TX reverts.</p>
+    </div>
+
+    <h2>Raydium LP</h2>
+    <p>Source: <code>examples/raydium-lp.ts</code></p>
+
+    <h3>Add Liquidity</h3>
+    <pre><code><span class="kw">const</span> hash = <span class="fn">computeIntentHash</span>(<span class="str">'raydium_add_lp'</span>, {
+  poolId: <span class="str">'58oQChx...'</span>,
+  tokenAAmount: <span class="num">500_000_000</span>,
+  tokenBAmount: <span class="num">10_000_000</span>,
+  minLpTokens: <span class="num">1_000</span>,
+});
+</code></pre>
+
+    <h3>Remove Liquidity</h3>
+    <pre><code><span class="kw">const</span> hash = <span class="fn">computeIntentHash</span>(<span class="str">'raydium_remove_lp'</span>, {
+  poolId: <span class="str">'58oQChx...'</span>,
+  lpTokenAmount: <span class="num">5_000</span>,
+  minTokenA: <span class="num">400_000_000</span>,
+  minTokenB: <span class="num">8_000_000</span>,
+});
+</code></pre>
+
+    <h2>Tensor / Magic Eden NFT</h2>
+    <p>Source: <code>examples/tensor-nft.ts</code></p>
+
+    <h3>Buy NFT</h3>
+    <pre><code><span class="kw">const</span> hash = <span class="fn">computeIntentHash</span>(<span class="str">'tensor_buy'</span>, {
+  mint: <span class="str">'NFTMint111...'</span>,
+  maxPrice: <span class="num">5_000_000_000</span>,  <span class="cm">// 5 SOL max</span>
+  marketplace: <span class="str">'tensor'</span>,
+});
+</code></pre>
+
+    <h3>List NFT</h3>
+    <pre><code><span class="kw">const</span> hash = <span class="fn">computeIntentHash</span>(<span class="str">'tensor_list'</span>, {
+  mint: <span class="str">'NFTMint111...'</span>,
+  listPrice: <span class="num">10_000_000_000</span>,  <span class="cm">// 10 SOL</span>
+  marketplace: <span class="str">'tensor'</span>,
+});
+</code></pre>
+
+    <h2>Marinade Staking</h2>
+    <p>Source: <code>examples/marinade-stake.ts</code></p>
+
+    <h3>Stake SOL</h3>
+    <pre><code><span class="kw">const</span> hash = <span class="fn">computeIntentHash</span>(<span class="str">'marinade_stake'</span>, {
+  amount: <span class="num">10_000_000_000</span>,  <span class="cm">// 10 SOL</span>
+  minMsolReceived: <span class="num">9_500_000_000</span>,
+});
+</code></pre>
+
+    <h3>Delayed Unstake</h3>
+    <pre><code><span class="kw">const</span> hash = <span class="fn">computeIntentHash</span>(<span class="str">'marinade_delayed_unstake'</span>, {
+  msolAmount: <span class="num">5_000_000_000</span>,
+  minSolReceived: <span class="num">5_200_000_000</span>,
+});
+</code></pre>
+
+    <h2>SPL Token Transfer</h2>
+    <p>Source: <code>examples/protected-transfer.ts</code></p>
+    <pre><code><span class="kw">const</span> hash = <span class="fn">computeIntentHash</span>(<span class="str">'transfer'</span>, {
+  recipient: <span class="str">'RecipientPubkey...'</span>,
+  mint: <span class="str">'EPjFWdd5...'</span>,
+  amount: <span class="num">1_000_000</span>,  <span class="cm">// 1 USDC</span>
+});
+</code></pre>
+
+    <h2>Rust CPI Integration</h2>
+    <p>Source: <code>examples/cpi-integration.rs</code></p>
+    <pre><code><span class="kw">use</span> intentguard_cpi::{<span class="fn">verify_intent_cpi</span>, <span class="ty">VerifyAccounts</span>};
+
+<span class="kw">pub fn</span> <span class="fn">protected_action</span>(ctx: <span class="ty">Context</span>&lt;<span class="ty">MyAction</span>&gt;, hash: [<span class="ty">u8</span>; <span class="num">32</span>]) -> <span class="ty">Result</span>&lt;()&gt; {
+    <span class="fn">verify_intent_cpi</span>(
+        <span class="ty">VerifyAccounts</span> { <span class="cm">/* ... */</span> },
+        hash,
+    )?;
+    <span class="cm">// Safe to proceed</span>
+    <span class="fn">do_action</span>(ctx)
+}
+</code></pre>
+
+    <h2>Hash Format Summary</h2>
+    <table>
+      <thead><tr><th>Protocol</th><th>Action Name</th><th>Key Params</th></tr></thead>
+      <tbody>
+        <tr><td>Jupiter</td><td><code>jupiter_swap</code></td><td>inputMint, outputMint, amount, slippageBps</td></tr>
+        <tr><td>Raydium</td><td><code>raydium_add_lp</code></td><td>poolId, tokenAAmount, tokenBAmount, minLpTokens</td></tr>
+        <tr><td>Tensor</td><td><code>tensor_buy</code></td><td>mint, maxPrice, marketplace</td></tr>
+        <tr><td>Marinade</td><td><code>marinade_stake</code></td><td>amount, minMsolReceived</td></tr>
+        <tr><td>Transfer</td><td><code>transfer</code></td><td>recipient, mint, amount</td></tr>
+      </tbody>
+    </table>
+  </main>
+
+</body>
+</html>

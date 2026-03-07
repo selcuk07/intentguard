@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quick Start — IntentGuard Docs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="topnav">
+    <a href="../index.html" class="topnav-logo"><div class="icon">&#x1f6e1;</div> IntentGuard</a>
+    <div class="topnav-links">
+      <a href="../index.html">Home</a>
+      <a href="../dashboard.html">Dashboard</a>
+      <a href="../api-docs/">API Reference</a>
+      <a href="https://github.com/selcuk07/intentguard" class="gh">GitHub</a>
+    </div>
+  </nav>
+
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Getting Started</div>
+      <a href="index.html">Overview</a>
+      <a href="quickstart.html" class="active">Quick Start</a>
+      <a href="architecture.html">Architecture</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">SDK</div>
+      <a href="sdk.html">TypeScript SDK</a>
+      <a href="cpi.html">Rust CPI Crate</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Integration</div>
+      <a href="examples.html">Examples</a>
+      <a href="widget.html">React Widget</a>
+      <a href="extension.html">Browser Extension</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Protocol</div>
+      <a href="fees.html">Fees &amp; Revenue</a>
+      <a href="admin.html">Admin Operations</a>
+      <a href="security.html">Security</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">API</div>
+      <a href="api.html">Premium API</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <h1>Quick <span class="accent">Start</span></h1>
+    <p class="subtitle">Add 2FA to your Solana dApp in 5 minutes. No program changes required.</p>
+
+    <h2>Step 1: Install the SDK</h2>
+    <pre><code>npm install intentguard-sdk @solana/web3.js</code></pre>
+
+    <h2>Step 2: Compute the Intent Hash</h2>
+    <p>The intent hash is a SHA-256 digest of the action name and parameters. Both the mobile app and the dApp must compute the same hash for verification to succeed.</p>
+    <pre><code><span class="kw">import</span> { <span class="fn">computeIntentHash</span> } <span class="kw">from</span> <span class="str">'intentguard-sdk'</span>;
+
+<span class="cm">// Hash the user's intended action</span>
+<span class="kw">const</span> hash = <span class="fn">computeIntentHash</span>(<span class="str">'swap'</span>, {
+  inputMint: <span class="str">'So11111111111111111111111111111111111111112'</span>,
+  outputMint: <span class="str">'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'</span>,
+  amount: <span class="num">1_000_000_000</span>,  <span class="cm">// 1 SOL in lamports</span>
+  slippage: <span class="num">50</span>,           <span class="cm">// 0.5% in bps</span>
+});
+</code></pre>
+
+    <div class="callout">
+      <p><strong>Important:</strong> The hash uses length-prefixed encoding to prevent concatenation ambiguity. Always use <code>computeIntentHash()</code> rather than manual hashing.</p>
+    </div>
+
+    <h2>Step 3: Commit Intent (Mobile/Trusted Device)</h2>
+    <p>On the trusted device (mobile app), the user confirms the action and commits the intent hash on-chain.</p>
+    <pre><code><span class="kw">import</span> { <span class="fn">createCommitIntentInstruction</span> } <span class="kw">from</span> <span class="str">'intentguard-sdk'</span>;
+<span class="kw">import</span> { <span class="fn">Connection</span>, <span class="fn">Transaction</span> } <span class="kw">from</span> <span class="str">'@solana/web3.js'</span>;
+
+<span class="kw">const</span> connection = <span class="kw">new</span> <span class="fn">Connection</span>(<span class="str">'https://api.devnet.solana.com'</span>);
+<span class="kw">const</span> appId = <span class="kw">new</span> <span class="fn">PublicKey</span>(<span class="str">'JUP6...'</span>); <span class="cm">// Target dApp program ID</span>
+
+<span class="kw">const</span> commitIx = <span class="fn">createCommitIntentInstruction</span>(
+  user.publicKey,  <span class="cm">// wallet</span>
+  appId,           <span class="cm">// app identifier</span>
+  hash,            <span class="cm">// intent hash</span>
+  <span class="num">300</span>,             <span class="cm">// TTL in seconds (5 min)</span>
+);
+
+<span class="kw">const</span> tx = <span class="kw">new</span> <span class="fn">Transaction</span>().<span class="fn">add</span>(commitIx);
+<span class="kw">await</span> <span class="fn">sendAndConfirmTransaction</span>(connection, tx, [user]);
+</code></pre>
+
+    <h2>Step 4: Verify + Execute (Browser/dApp)</h2>
+    <p>The dApp detects the on-chain commit and prepends a verify instruction to the actual transaction.</p>
+    <pre><code><span class="kw">import</span> {
+  <span class="fn">createVerifyIntentInstruction</span>,
+  <span class="fn">getIntentCommit</span>,
+} <span class="kw">from</span> <span class="str">'intentguard-sdk'</span>;
+
+<span class="cm">// Check if intent has been committed</span>
+<span class="kw">const</span> commit = <span class="kw">await</span> <span class="fn">getIntentCommit</span>(connection, user.publicKey, appId);
+<span class="kw">if</span> (!commit) <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'No pending intent'</span>);
+
+<span class="cm">// Build verify instruction</span>
+<span class="kw">const</span> verifyIx = <span class="fn">createVerifyIntentInstruction</span>(user.publicKey, appId, hash);
+
+<span class="cm">// Build your normal swap/transfer instruction</span>
+<span class="kw">const</span> swapIx = <span class="fn">buildSwapInstruction</span>(params);
+
+<span class="cm">// Send atomically: verify MUST succeed for swap to execute</span>
+<span class="kw">const</span> tx = <span class="kw">new</span> <span class="fn">Transaction</span>().<span class="fn">add</span>(verifyIx).<span class="fn">add</span>(swapIx);
+<span class="kw">await</span> <span class="fn">sendAndConfirmTransaction</span>(connection, tx, [user]);
+</code></pre>
+
+    <h2>Step 5: Handle Expiry &amp; Revocation</h2>
+    <p>If the user decides not to proceed, they can revoke the intent to reclaim rent:</p>
+    <pre><code><span class="kw">import</span> { <span class="fn">createRevokeIntentInstruction</span> } <span class="kw">from</span> <span class="str">'intentguard-sdk'</span>;
+
+<span class="kw">const</span> revokeIx = <span class="fn">createRevokeIntentInstruction</span>(user.publicKey, appId);
+<span class="kw">const</span> tx = <span class="kw">new</span> <span class="fn">Transaction</span>().<span class="fn">add</span>(revokeIx);
+<span class="kw">await</span> <span class="fn">sendAndConfirmTransaction</span>(connection, tx, [user]);
+</code></pre>
+    <p>Expired intents (past TTL) will also fail verification automatically.</p>
+
+    <h2>What Happens Under the Hood</h2>
+    <table>
+      <thead><tr><th>Step</th><th>Instruction</th><th>Accounts</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr><td>Commit</td><td><code>commit_intent</code></td><td>4 (intent PDA, config, user, system)</td><td>Creates IntentCommit PDA with hash + TTL</td></tr>
+        <tr><td>Verify</td><td><code>verify_intent</code></td><td>4 (intent PDA, config, user, system)</td><td>Checks hash match, closes PDA, collects fee</td></tr>
+        <tr><td>Revoke</td><td><code>revoke_intent</code></td><td>2 (intent PDA, user)</td><td>Closes PDA, refunds rent to user</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <p>Next: <a href="sdk.html"><strong>SDK Reference</strong></a> for all available functions and parameters.</p>
+    </div>
+  </main>
+
+</body>
+</html>

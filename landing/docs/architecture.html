@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Architecture — IntentGuard Docs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="topnav">
+    <a href="../index.html" class="topnav-logo"><div class="icon">&#x1f6e1;</div> IntentGuard</a>
+    <div class="topnav-links">
+      <a href="../index.html">Home</a><a href="../dashboard.html">Dashboard</a><a href="../api-docs/">API Reference</a>
+      <a href="https://github.com/selcuk07/intentguard" class="gh">GitHub</a>
+    </div>
+  </nav>
+
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Getting Started</div>
+      <a href="index.html">Overview</a><a href="quickstart.html">Quick Start</a><a href="architecture.html" class="active">Architecture</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">SDK</div>
+      <a href="sdk.html">TypeScript SDK</a><a href="cpi.html">Rust CPI Crate</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Integration</div>
+      <a href="examples.html">Examples</a><a href="widget.html">React Widget</a><a href="extension.html">Browser Extension</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Protocol</div>
+      <a href="fees.html">Fees &amp; Revenue</a><a href="admin.html">Admin Operations</a><a href="security.html">Security</a>
+    </div>
+    <div class="sidebar-section"><div class="sidebar-label">API</div><a href="api.html">Premium API</a></div>
+  </aside>
+
+  <main class="main">
+    <h1><span class="accent">Architecture</span></h1>
+    <p class="subtitle">On-chain program structure, account layout, and instruction flow.</p>
+
+    <h2>Program Instructions</h2>
+    <table>
+      <thead><tr><th>Instruction</th><th>Accounts</th><th>Access</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>initialize</code></td><td>2</td><td>Admin (once)</td><td>Create GuardConfig PDA</td></tr>
+        <tr><td><code>commit_intent</code></td><td>4</td><td>Any user</td><td>Commit intent hash with TTL</td></tr>
+        <tr><td><code>verify_intent</code></td><td>4</td><td>Intent owner</td><td>Verify hash match, close PDA, collect fee</td></tr>
+        <tr><td><code>revoke_intent</code></td><td>2</td><td>Intent owner</td><td>Cancel intent, refund rent</td></tr>
+        <tr><td><code>pause_protocol</code></td><td>2</td><td>Admin</td><td>Block commit + verify</td></tr>
+        <tr><td><code>unpause_protocol</code></td><td>2</td><td>Admin</td><td>Resume protocol</td></tr>
+        <tr><td><code>transfer_admin</code></td><td>2</td><td>Admin</td><td>Transfer admin authority</td></tr>
+        <tr><td><code>update_config</code></td><td>2</td><td>Admin</td><td>Update min_balance</td></tr>
+        <tr><td><code>update_fee</code></td><td>2</td><td>Admin</td><td>Set verify fee (max 0.1 SOL)</td></tr>
+        <tr><td><code>withdraw_fees</code></td><td>2</td><td>Admin</td><td>Withdraw accumulated fees</td></tr>
+        <tr><td><code>migrate_config</code></td><td>2</td><td>Admin</td><td>Realloc config for schema upgrade</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Account Layout: IntentCommit (121 bytes)</h2>
+    <table>
+      <thead><tr><th>Field</th><th>Offset</th><th>Size</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td>discriminator</td><td>0</td><td>8</td><td>u8[8]</td></tr>
+        <tr><td>user</td><td>8</td><td>32</td><td>Pubkey</td></tr>
+        <tr><td>app_id</td><td>40</td><td>32</td><td>Pubkey</td></tr>
+        <tr><td>intent_hash</td><td>72</td><td>32</td><td>u8[32]</td></tr>
+        <tr><td>committed_at</td><td>104</td><td>8</td><td>i64</td></tr>
+        <tr><td>expires_at</td><td>112</td><td>8</td><td>i64</td></tr>
+        <tr><td>bump</td><td>120</td><td>1</td><td>u8</td></tr>
+      </tbody>
+    </table>
+    <p><strong>PDA seeds:</strong> <code>[b"intent", user.key(), app_id.key()]</code></p>
+
+    <h2>Account Layout: GuardConfig (82 bytes)</h2>
+    <table>
+      <thead><tr><th>Field</th><th>Offset</th><th>Size</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td>discriminator</td><td>0</td><td>8</td><td>u8[8]</td></tr>
+        <tr><td>admin</td><td>8</td><td>32</td><td>Pubkey</td></tr>
+        <tr><td>is_paused</td><td>40</td><td>1</td><td>bool</td></tr>
+        <tr><td>total_commits</td><td>41</td><td>8</td><td>u64</td></tr>
+        <tr><td>total_verifies</td><td>49</td><td>8</td><td>u64</td></tr>
+        <tr><td>min_balance</td><td>57</td><td>8</td><td>u64</td></tr>
+        <tr><td>verify_fee</td><td>65</td><td>8</td><td>u64</td></tr>
+        <tr><td>total_fees_collected</td><td>73</td><td>8</td><td>u64</td></tr>
+        <tr><td>bump</td><td>81</td><td>1</td><td>u8</td></tr>
+      </tbody>
+    </table>
+    <p><strong>PDA seeds:</strong> <code>[b"config"]</code> &mdash; singleton per program</p>
+
+    <h2>Verification Flow</h2>
+    <pre><code><span class="cm">Mobile (Trusted)         Solana          Browser (Untrusted)</span>
+     |                      |                    |
+     |  <span class="str">commit_intent</span>       |                    |
+     |--------------------->|                    |
+     |                      | IntentCommit PDA   |
+     |                      |  created           |
+     |                      |                    |
+     |                      |   <span class="str">verify_intent</span>   |
+     |                      |<-------------------|
+     |                      |                    |
+     |                      | hash match?        |
+     |                      |  YES -> close PDA  |
+     |                      |  NO  -> TX reverts |
+     |                      |                    |
+</code></pre>
+
+    <h2>Project Structure</h2>
+    <pre><code>intentguard/
+  programs/intent-guard/src/   <span class="cm"># On-chain Rust program</span>
+    lib.rs                     <span class="cm"># Instruction router</span>
+    state.rs                   <span class="cm"># IntentCommit, GuardConfig</span>
+    errors.rs                  <span class="cm"># Error codes (11 variants)</span>
+    instructions/              <span class="cm"># Handlers</span>
+  packages/sdk/src/            <span class="cm"># TypeScript SDK (npm)</span>
+  packages/cpi/src/            <span class="cm"># Rust CPI crate</span>
+  extension/src/               <span class="cm"># Chrome extension</span>
+  app/                         <span class="cm"># React Native mobile app</span>
+  examples/                    <span class="cm"># Integration examples</span>
+  scripts/                     <span class="cm"># Admin tools, API server</span>
+  tests/                       <span class="cm"># Integration + unit tests</span>
+  landing/                     <span class="cm"># GitHub Pages site + docs</span>
+</code></pre>
+
+    <h2>Constants</h2>
+    <table>
+      <thead><tr><th>Constant</th><th>Value</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>DEFAULT_TTL</td><td>300s</td><td>5 minute default expiry</td></tr>
+        <tr><td>MIN_TTL</td><td>30s</td><td>Minimum allowed TTL</td></tr>
+        <tr><td>MAX_TTL</td><td>3600s</td><td>Maximum allowed TTL (1 hour)</td></tr>
+        <tr><td>DEFAULT_MIN_BALANCE</td><td>0.01 SOL</td><td>Spam protection threshold</td></tr>
+        <tr><td>MAX_MIN_BALANCE</td><td>1 SOL</td><td>Admin can't set higher</td></tr>
+        <tr><td>MAX_VERIFY_FEE</td><td>0.1 SOL</td><td>Fee cap per verify</td></tr>
+      </tbody>
+    </table>
+  </main>
+
+</body>
+</html>

@@ -175,7 +175,7 @@
 
 ### Community
 - [x] Open-source all components (MIT license)
-- [ ] Developer documentation site
+- [x] Developer documentation site (landing/docs/ — 11 pages)
 - [ ] Discord community
 - [ ] Ambassador program for dApp integrations
 - [ ] Hackathon bounties: "Build with IntentGuard"

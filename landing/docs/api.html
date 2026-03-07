@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Premium API — IntentGuard Docs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="topnav">
+    <a href="../index.html" class="topnav-logo"><div class="icon">&#x1f6e1;</div> IntentGuard</a>
+    <div class="topnav-links">
+      <a href="../index.html">Home</a>
+      <a href="../dashboard.html">Dashboard</a>
+      <a href="../api-docs/">API Reference</a>
+      <a href="https://github.com/selcuk07/intentguard" class="gh">GitHub</a>
+    </div>
+  </nav>
+
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Getting Started</div>
+      <a href="index.html">Overview</a>
+      <a href="quickstart.html">Quick Start</a>
+      <a href="architecture.html">Architecture</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">SDK</div>
+      <a href="sdk.html">TypeScript SDK</a>
+      <a href="cpi.html">Rust CPI Crate</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Integration</div>
+      <a href="examples.html">Examples</a>
+      <a href="widget.html">React Widget</a>
+      <a href="extension.html">Browser Extension</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Protocol</div>
+      <a href="fees.html">Fees &amp; Revenue</a>
+      <a href="admin.html">Admin Operations</a>
+      <a href="security.html">Security</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">API</div>
+      <a href="api.html" class="active">Premium API</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <h1>Premium <span class="accent">API</span></h1>
+    <p class="subtitle">Hosted verification service with analytics, webhooks, and rate-limited tiers.</p>
+
+    <h2>Pricing Tiers</h2>
+    <table>
+      <thead><tr><th>Tier</th><th>Rate Limit</th><th>Analytics</th><th>Webhooks</th><th>Monthly</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge badge-green">Free</span></td><td>10 req/min</td><td>&mdash;</td><td>&mdash;</td><td>$0</td></tr>
+        <tr><td><span class="badge badge-blue">Pro</span></td><td>100 req/min</td><td>Full</td><td>10</td><td>$49</td></tr>
+        <tr><td><span class="badge badge-yellow">Enterprise</span></td><td>Unlimited</td><td>Full + SLA</td><td>100</td><td>$299</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Authentication</h2>
+    <p>All authenticated endpoints require a Bearer token:</p>
+    <pre><code>Authorization: Bearer <span class="str">ig_your_api_key_here</span></code></pre>
+
+    <h2>Public Endpoints</h2>
+
+    <h3>GET /api/v1/stats</h3>
+    <p>Protocol statistics. No auth required.</p>
+    <pre><code><span class="cm">// Response</span>
+{
+  <span class="str">"totalCommits"</span>: <span class="num">1234</span>,
+  <span class="str">"totalVerifies"</span>: <span class="num">1100</span>,
+  <span class="str">"verifyRate"</span>: <span class="str">"89.1%"</span>,
+  <span class="str">"isPaused"</span>: <span class="kw">false</span>,
+  <span class="str">"verifyFee"</span>: <span class="num">0</span>,
+  <span class="str">"totalFeesCollected"</span>: <span class="num">0</span>
+}
+</code></pre>
+
+    <h3>GET /api/v1/pricing</h3>
+    <p>Returns pricing tier details.</p>
+
+    <h2>Authenticated Endpoints</h2>
+
+    <h3>POST /api/v1/verify</h3>
+    <p>Check intent status for a wallet + app combination.</p>
+    <pre><code><span class="cm">// Request</span>
+{
+  <span class="str">"wallet"</span>: <span class="str">"UserPublicKey..."</span>,
+  <span class="str">"appId"</span>: <span class="str">"AppPublicKey..."</span>
+}
+
+<span class="cm">// Response</span>
+{
+  <span class="str">"found"</span>: <span class="kw">true</span>,
+  <span class="str">"intentHash"</span>: <span class="str">"abc123..."</span>,
+  <span class="str">"committedAt"</span>: <span class="num">1700000000</span>,
+  <span class="str">"expiresAt"</span>: <span class="num">1700000300</span>,
+  <span class="str">"isExpired"</span>: <span class="kw">false</span>
+}
+</code></pre>
+
+    <h3>GET /api/v1/intents/:wallet</h3>
+    <p>List all pending intents for a wallet across all apps.</p>
+
+    <h3>GET /api/v1/analytics</h3>
+    <p><span class="badge badge-blue">Pro+</span> 24-hour analytics breakdown with per-endpoint latency and error rates.</p>
+
+    <h2>Webhooks</h2>
+
+    <h3>POST /api/v1/webhooks</h3>
+    <p><span class="badge badge-blue">Pro+</span> Create a webhook subscription.</p>
+    <pre><code><span class="cm">// Request</span>
+{
+  <span class="str">"url"</span>: <span class="str">"https://your-app.com/webhook"</span>,
+  <span class="str">"events"</span>: [<span class="str">"commit"</span>, <span class="str">"verify"</span>, <span class="str">"expire"</span>]
+}
+
+<span class="cm">// Webhook payload</span>
+{
+  <span class="str">"event"</span>: <span class="str">"verify"</span>,
+  <span class="str">"wallet"</span>: <span class="str">"..."</span>,
+  <span class="str">"appId"</span>: <span class="str">"..."</span>,
+  <span class="str">"intentHash"</span>: <span class="str">"..."</span>,
+  <span class="str">"timestamp"</span>: <span class="num">1700000000</span>,
+  <span class="str">"txSignature"</span>: <span class="str">"..."</span>
+}
+</code></pre>
+
+    <h3>Valid Events</h3>
+    <p><code>commit</code>, <code>verify</code>, <code>revoke</code>, <code>expire</code>, <code>pause</code>, <code>unpause</code></p>
+
+    <h3>GET /api/v1/webhooks</h3>
+    <p>List your webhook subscriptions.</p>
+
+    <h3>DELETE /api/v1/webhooks/:id</h3>
+    <p>Delete a webhook subscription.</p>
+
+    <h2>Admin Endpoints</h2>
+
+    <h3>POST /api/v1/keys</h3>
+    <p>Create a new API key (admin only).</p>
+    <pre><code>{
+  <span class="str">"tier"</span>: <span class="str">"pro"</span>,
+  <span class="str">"label"</span>: <span class="str">"My dApp Production"</span>
+}
+</code></pre>
+
+    <h3>GET /api/v1/keys</h3>
+    <p>List all API keys (admin only).</p>
+
+    <h2>Rate Limiting</h2>
+    <p>Rate limits are enforced per API key with a sliding window:</p>
+    <pre><code><span class="cm">// Response headers</span>
+X-RateLimit-Limit: <span class="num">100</span>
+X-RateLimit-Remaining: <span class="num">95</span>
+X-RateLimit-Reset: <span class="num">1700000060</span>
+</code></pre>
+    <p>When rate limited, the API returns <code>429 Too Many Requests</code>.</p>
+
+    <h2>Health Check</h2>
+    <pre><code>GET /health
+<span class="cm">// { "status": "ok", "timestamp": 1700000000 }</span>
+</code></pre>
+  </main>
+
+</body>
+</html>

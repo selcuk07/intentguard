@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IntentGuard Docs — Getting Started</title>
+  <meta name="description" content="Developer documentation for IntentGuard, the Solana 2FA protocol.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- TOP NAV -->
+  <nav class="topnav">
+    <a href="../index.html" class="topnav-logo">
+      <div class="icon">&#x1f6e1;</div>
+      IntentGuard
+    </a>
+    <div class="topnav-links">
+      <a href="../index.html">Home</a>
+      <a href="../dashboard.html">Dashboard</a>
+      <a href="../api-docs/">API Reference</a>
+      <a href="https://github.com/selcuk07/intentguard" class="gh">GitHub</a>
+    </div>
+  </nav>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Getting Started</div>
+      <a href="index.html" class="active">Overview</a>
+      <a href="quickstart.html">Quick Start</a>
+      <a href="architecture.html">Architecture</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">SDK</div>
+      <a href="sdk.html">TypeScript SDK</a>
+      <a href="cpi.html">Rust CPI Crate</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Integration</div>
+      <a href="examples.html">Examples</a>
+      <a href="widget.html">React Widget</a>
+      <a href="extension.html">Browser Extension</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Protocol</div>
+      <a href="fees.html">Fees &amp; Revenue</a>
+      <a href="admin.html">Admin Operations</a>
+      <a href="security.html">Security</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">API</div>
+      <a href="api.html">Premium API</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+    <h1>IntentGuard <span class="accent">Docs</span></h1>
+    <p class="subtitle">Two-factor authentication for every Solana transaction. Commit from your phone, verify on-chain.</p>
+
+    <div class="callout">
+      <p><strong>Program ID:</strong> <code>4etWfDJNHhjYdv7fuGe236GDPguwUXVk9WhbEpQsPix7</code> &mdash; Live on Solana devnet</p>
+    </div>
+
+    <h2>What is IntentGuard?</h2>
+    <p>IntentGuard is a <strong>commit-reveal 2FA protocol</strong> for Solana. It separates transaction <em>intent</em> from <em>execution</em> across two devices, so a compromised browser can never change your transaction parameters.</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <h4>Device Separation</h4>
+        <p>Confirm intent on your phone, execute from your browser. Two different attack surfaces.</p>
+      </div>
+      <div class="card">
+        <h4>On-Chain Verification</h4>
+        <p>Intent hash is verified by the Solana program itself. No trusted server, no centralized service.</p>
+      </div>
+      <div class="card">
+        <h4>Atomic Transactions</h4>
+        <p>Verify instruction is prepended to your TX. If the hash doesn't match, the entire TX reverts.</p>
+      </div>
+      <div class="card">
+        <h4>Per-App Isolation</h4>
+        <p>Each app gets its own intent PDA. Intents for Jupiter can't interfere with Raydium.</p>
+      </div>
+    </div>
+
+    <h2>How It Works</h2>
+    <ol>
+      <li><strong>Commit</strong> &mdash; User confirms intent on their mobile app. The intent hash (SHA-256 of action + params) is committed on-chain via <code>commit_intent</code>.</li>
+      <li><strong>Verify</strong> &mdash; The dApp prepends a <code>verify_intent</code> instruction to the actual transaction. The program checks that the hash matches the committed intent.</li>
+      <li><strong>Execute or Revert</strong> &mdash; If hashes match, the TX proceeds atomically. If they don't match (attacker changed params), the TX reverts and funds are safe.</li>
+    </ol>
+
+    <h2>Install</h2>
+    <h3>TypeScript</h3>
+    <pre><code><span class="fn">npm install</span> intentguard-sdk</code></pre>
+
+    <h3>Rust (CPI)</h3>
+    <pre><code><span class="fn">cargo add</span> intentguard-cpi</code></pre>
+
+    <h2>Quick Example</h2>
+    <pre><code><span class="kw">import</span> {
+  <span class="fn">computeIntentHash</span>,
+  <span class="fn">createCommitIntentInstruction</span>,
+  <span class="fn">createVerifyIntentInstruction</span>,
+} <span class="kw">from</span> <span class="str">'intentguard-sdk'</span>;
+
+<span class="cm">// 1. Compute hash of what the user intends</span>
+<span class="kw">const</span> hash = <span class="fn">computeIntentHash</span>(<span class="str">'swap'</span>, { amount: <span class="num">1_000_000_000</span>, mint: <span class="str">'...'</span> });
+
+<span class="cm">// 2. Commit on-chain (from mobile app)</span>
+<span class="kw">const</span> commitIx = <span class="fn">createCommitIntentInstruction</span>(user, appId, hash, <span class="num">300</span>);
+
+<span class="cm">// 3. Verify + execute atomically (from browser)</span>
+<span class="kw">const</span> verifyIx = <span class="fn">createVerifyIntentInstruction</span>(user, appId, hash);
+<span class="kw">const</span> tx = <span class="kw">new</span> <span class="fn">Transaction</span>().<span class="fn">add</span>(verifyIx).<span class="fn">add</span>(swapIx);
+</code></pre>
+
+    <h2>Key Concepts</h2>
+    <table>
+      <thead>
+        <tr><th>Concept</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Intent Hash</strong></td><td>SHA-256 of <code>action + params</code> with length-prefix encoding. Deterministic and collision-resistant.</td></tr>
+        <tr><td><strong>PDA Seeds</strong></td><td>Intent: <code>[b"intent", user, app_id]</code> &mdash; one active intent per user per app.</td></tr>
+        <tr><td><strong>TTL</strong></td><td>Time-to-live: 30s&ndash;3600s (default 300s). Expired intents cannot be verified.</td></tr>
+        <tr><td><strong>GuardConfig</strong></td><td>Global config PDA: <code>[b"config"]</code>. Stores admin, counters, pause state, fee settings.</td></tr>
+        <tr><td><strong>Verify Fee</strong></td><td>Optional per-verify fee (0 by default). Collected in config PDA, withdrawable by admin.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Architecture</h2>
+    <table>
+      <thead>
+        <tr><th>Component</th><th>Technology</th><th>Package</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>On-chain program</td><td>Rust / Anchor 0.32</td><td><code>programs/intent-guard/</code></td></tr>
+        <tr><td>TypeScript SDK</td><td>No Anchor dep, CJS+ESM</td><td><a href="https://www.npmjs.com/package/intentguard-sdk">intentguard-sdk</a></td></tr>
+        <tr><td>Rust CPI crate</td><td>Anchor-compatible</td><td><a href="https://crates.io/crates/intentguard-cpi">intentguard-cpi</a></td></tr>
+        <tr><td>React widget</td><td>React component</td><td><code>intentguard-sdk/react</code></td></tr>
+        <tr><td>Browser extension</td><td>Chrome Manifest V3</td><td><code>extension/</code></td></tr>
+        <tr><td>Mobile app</td><td>React Native / Expo</td><td><code>app/</code></td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <p>Next: <a href="quickstart.html"><strong>Quick Start Guide</strong></a> &mdash; integrate IntentGuard in 5 minutes.</p>
+    </div>
+  </main>
+
+</body>
+</html>

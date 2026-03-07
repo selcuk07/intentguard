@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browser Extension — IntentGuard Docs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="topnav">
+    <a href="../index.html" class="topnav-logo"><div class="icon">&#x1f6e1;</div> IntentGuard</a>
+    <div class="topnav-links">
+      <a href="../index.html">Home</a><a href="../dashboard.html">Dashboard</a><a href="../api-docs/">API Reference</a>
+      <a href="https://github.com/selcuk07/intentguard" class="gh">GitHub</a>
+    </div>
+  </nav>
+
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Getting Started</div>
+      <a href="index.html">Overview</a><a href="quickstart.html">Quick Start</a><a href="architecture.html">Architecture</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">SDK</div>
+      <a href="sdk.html">TypeScript SDK</a><a href="cpi.html">Rust CPI Crate</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Integration</div>
+      <a href="examples.html">Examples</a><a href="widget.html">React Widget</a><a href="extension.html" class="active">Browser Extension</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Protocol</div>
+      <a href="fees.html">Fees &amp; Revenue</a><a href="admin.html">Admin Operations</a><a href="security.html">Security</a>
+    </div>
+    <div class="sidebar-section"><div class="sidebar-label">API</div><a href="api.html">Premium API</a></div>
+  </aside>
+
+  <main class="main">
+    <h1>Browser <span class="accent">Extension</span></h1>
+    <p class="subtitle">Chrome Manifest V3 extension. Auto-detects Solana dApps, intercepts transactions, and pairs with mobile.</p>
+
+    <h2>Features</h2>
+    <div class="card-grid">
+      <div class="card">
+        <h4>Transaction Intercept</h4>
+        <p>Hooks into wallet's <code>signTransaction</code>. Blocks until intent is verified on-chain.</p>
+      </div>
+      <div class="card">
+        <h4>Mobile Pairing</h4>
+        <p>One-time QR pairing (like WhatsApp Web). Encrypted WebSocket channel for notifications.</p>
+      </div>
+      <div class="card">
+        <h4>Bypass List</h4>
+        <p>Trusted sites skip 2FA. Max 50 entries. Managed from popup.</p>
+      </div>
+      <div class="card">
+        <h4>Protocol Stats</h4>
+        <p>Popup shows total commits, verifies, verify fee, and protocol status.</p>
+      </div>
+    </div>
+
+    <h2>How It Works</h2>
+    <ol>
+      <li><strong>Content script</strong> injects into Solana dApp pages</li>
+      <li><strong>Detects</strong> wallet adapter's <code>signTransaction</code> calls</li>
+      <li><strong>Checks bypass list</strong> &mdash; if site is trusted, allows through</li>
+      <li><strong>Sends push notification</strong> to paired mobile device</li>
+      <li><strong>Blocks TX</strong> until <code>IntentCommit</code> PDA is detected on-chain</li>
+      <li><strong>Allows TX</strong> to proceed once intent is verified</li>
+    </ol>
+
+    <h2>Pairing Protocol</h2>
+    <ol>
+      <li>Extension generates ephemeral ECDH key pair (non-extractable)</li>
+      <li>Displays QR code containing public key + session ID</li>
+      <li>Mobile app scans QR, derives shared secret via ECDH</li>
+      <li>Both sides establish encrypted WebSocket channel</li>
+      <li>Pairing info stored in extension's <code>chrome.storage.local</code></li>
+    </ol>
+
+    <h2>Popup Sections</h2>
+    <ul>
+      <li><strong>Connection Status</strong> &mdash; Shows RPC connection state and network</li>
+      <li><strong>Protocol Stats</strong> &mdash; Total commits, verifies, and current verify fee</li>
+      <li><strong>Intent Checker</strong> &mdash; Lookup pending intents by wallet + app ID</li>
+      <li><strong>Paired Devices</strong> &mdash; Manage paired mobile devices</li>
+      <li><strong>Bypass List</strong> &mdash; Manage trusted sites that skip 2FA</li>
+    </ul>
+
+    <h2>App Registry</h2>
+    <p>The extension resolves <code>app_id</code> program addresses to human-readable names using a bundled app registry:</p>
+    <pre><code><span class="cm">// Known apps resolved in popup and content script</span>
+Jupiter     <span class="str">JUP6LkbZbjS1jKKwa...</span>
+Raydium     <span class="str">675kPX9MHTjS2zt1qf...</span>
+Tensor      <span class="str">TSWAPaqyCSx2KABk68...</span>
+Magic Eden  <span class="str">M2mx93ekt1fmXSVkTr...</span>
+Marinade    <span class="str">MarBmsSgKXdrN1egZf...</span>
+</code></pre>
+
+    <h2>Security</h2>
+    <ul>
+      <li>All user input sanitized (no <code>innerHTML</code>)</li>
+      <li>Request IDs use <code>crypto.getRandomValues</code> (not sequential)</li>
+      <li>Pairing keys are non-extractable <code>CryptoKey</code> objects</li>
+      <li>Bypass list limited to 50 entries with hostname validation</li>
+      <li>Fail-closed: RPC errors block transactions (not fail-open)</li>
+    </ul>
+
+    <h2>Installation (Dev Mode)</h2>
+    <ol>
+      <li>Clone the repo: <code>git clone https://github.com/selcuk07/intentguard</code></li>
+      <li>Open Chrome &rarr; <code>chrome://extensions</code></li>
+      <li>Enable "Developer mode"</li>
+      <li>Click "Load unpacked" &rarr; select the <code>extension/</code> directory</li>
+    </ol>
+  </main>
+
+</body>
+</html>

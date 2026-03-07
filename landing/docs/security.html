@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security — IntentGuard Docs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="topnav">
+    <a href="../index.html" class="topnav-logo"><div class="icon">&#x1f6e1;</div> IntentGuard</a>
+    <div class="topnav-links">
+      <a href="../index.html">Home</a>
+      <a href="../dashboard.html">Dashboard</a>
+      <a href="../api-docs/">API Reference</a>
+      <a href="https://github.com/selcuk07/intentguard" class="gh">GitHub</a>
+    </div>
+  </nav>
+
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Getting Started</div>
+      <a href="index.html">Overview</a>
+      <a href="quickstart.html">Quick Start</a>
+      <a href="architecture.html">Architecture</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">SDK</div>
+      <a href="sdk.html">TypeScript SDK</a>
+      <a href="cpi.html">Rust CPI Crate</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Integration</div>
+      <a href="examples.html">Examples</a>
+      <a href="widget.html">React Widget</a>
+      <a href="extension.html">Browser Extension</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Protocol</div>
+      <a href="fees.html">Fees &amp; Revenue</a>
+      <a href="admin.html">Admin Operations</a>
+      <a href="security.html" class="active">Security</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">API</div>
+      <a href="api.html">Premium API</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <h1><span class="accent">Security</span> Model</h1>
+    <p class="subtitle">Threat model, attack vectors, and security properties of IntentGuard.</p>
+
+    <h2>Threat Model Summary</h2>
+    <p>IntentGuard addresses 12 attack vectors documented in <code>THREAT-MODEL.md</code>:</p>
+
+    <table>
+      <thead><tr><th>ID</th><th>Attack Vector</th><th>Status</th><th>Mitigation</th></tr></thead>
+      <tbody>
+        <tr><td>A1</td><td>Frontend compromise</td><td><span class="badge badge-green">Mitigated</span></td><td>Core design: device separation</td></tr>
+        <tr><td>A2</td><td>Mobile device compromise</td><td><span class="badge badge-yellow">Residual</span></td><td>Biometric auth + SecureStore</td></tr>
+        <tr><td>A3</td><td>Replay attack</td><td><span class="badge badge-green">Mitigated</span></td><td>PDA closed after verify/revoke</td></tr>
+        <tr><td>A4</td><td>Stale intent (expired)</td><td><span class="badge badge-green">Mitigated</span></td><td>TTL enforcement (30s&ndash;3600s)</td></tr>
+        <tr><td>A5</td><td>Cross-app attack</td><td><span class="badge badge-green">Mitigated</span></td><td>app_id in PDA seeds</td></tr>
+        <tr><td>A6</td><td>Hash preimage</td><td><span class="badge badge-green">Mitigated</span></td><td>SHA-256 (2^256 preimage resistance)</td></tr>
+        <tr><td>A7</td><td>Admin key compromise</td><td><span class="badge badge-green">Mitigated</span></td><td>Squads multisig + time lock</td></tr>
+        <tr><td>A8</td><td>PDA squatting</td><td><span class="badge badge-green">Mitigated</span></td><td>Signer constraint on commit</td></tr>
+        <tr><td>A9</td><td>Rent drain</td><td><span class="badge badge-green">Mitigated</span></td><td>close refunds rent to user</td></tr>
+        <tr><td>A10</td><td>RPC manipulation</td><td><span class="badge badge-yellow">Residual</span></td><td>Fail-closed on RPC error</td></tr>
+        <tr><td>A11</td><td>Protocol pause DoS</td><td><span class="badge badge-green">Mitigated</span></td><td>Revoke always available; multisig admin</td></tr>
+        <tr><td>A12</td><td>TX ordering attack</td><td><span class="badge badge-green">Mitigated</span></td><td>has_one constraint (only owner)</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Security Properties</h2>
+    <ul>
+      <li><strong>Device separation</strong> &mdash; Intent is confirmed on a physically separate device</li>
+      <li><strong>Atomic verification</strong> &mdash; Verify instruction is part of the TX; mismatch = full revert</li>
+      <li><strong>Per-user per-app isolation</strong> &mdash; PDA seeds: <code>[b"intent", user, app_id]</code></li>
+      <li><strong>One active intent</strong> &mdash; Only 1 pending intent per user per app (Anchor init constraint)</li>
+      <li><strong>Signer-only access</strong> &mdash; Only the wallet owner can commit, verify, or revoke</li>
+      <li><strong>Checked arithmetic</strong> &mdash; All counters use <code>checked_add</code></li>
+      <li><strong>Fail-closed</strong> &mdash; Extension blocks transactions on RPC error (not fail-open)</li>
+    </ul>
+
+    <h2>On-Chain Security</h2>
+
+    <h3>Access Control</h3>
+    <pre><code><span class="cm">// Every user instruction requires signer</span>
+<span class="kw">#[account(mut)]</span>
+<span class="kw">pub</span> user: <span class="ty">Signer</span>&lt;<span class="str">'info</span>&gt;,
+
+<span class="cm">// has_one ensures stored user matches signer</span>
+<span class="kw">#[account(</span>
+    <span class="fn">has_one</span> = user,
+    <span class="fn">seeds</span> = [b<span class="str">"intent"</span>, user.key().as_ref(), intent_commit.app_id.as_ref()],
+    <span class="fn">bump</span> = intent_commit.bump,
+<span class="kw">)]</span>
+</code></pre>
+
+    <h3>Admin Protections</h3>
+    <ul>
+      <li>Admin instructions check <code>config.admin == signer</code></li>
+      <li>Cannot transfer admin to zero address or system program</li>
+      <li>MAX_MIN_BALANCE = 1 SOL (prevents lockout via spam protection)</li>
+      <li>MAX_VERIFY_FEE = 0.1 SOL (prevents fee abuse)</li>
+      <li>Mainnet: admin transferred to Squads multisig vault</li>
+    </ul>
+
+    <h2>Extension Security</h2>
+    <ul>
+      <li><strong>XSS prevention</strong> &mdash; All user input sanitized with <code>textContent</code> (not <code>innerHTML</code>)</li>
+      <li><strong>Bypass list</strong> &mdash; Max 50 entries, validated hostnames only</li>
+      <li><strong>Pairing keys</strong> &mdash; Non-extractable CryptoKey, no JWK export</li>
+      <li><strong>Request IDs</strong> &mdash; <code>crypto.getRandomValues</code> (not sequential)</li>
+      <li><strong>Content script</strong> &mdash; No global state leaks, scoped poll timers</li>
+    </ul>
+
+    <h2>Test Coverage</h2>
+    <table>
+      <thead><tr><th>Category</th><th>Tests</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>On-chain integration</td><td>29</td><td>Full flow, access control, TTL, admin</td></tr>
+        <tr><td>On-chain security</td><td>43</td><td>12 attack vectors, edge cases</td></tr>
+        <tr><td>Trident fuzzing</td><td>~1M instructions</td><td>8 flows, 5K iterations, 0 violations</td></tr>
+        <tr><td>Unit tests (vitest)</td><td>612</td><td>SDK, extension, pairing, security</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Bug Bounty</h2>
+    <table>
+      <thead><tr><th>Severity</th><th>Reward</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge badge-green">Critical</span></td><td>$50,000</td><td>Fund theft, unauthorized verify</td></tr>
+        <tr><td><span class="badge badge-yellow">High</span></td><td>$10,000</td><td>Admin bypass, intent manipulation</td></tr>
+        <tr><td><span class="badge badge-blue">Medium</span></td><td>$2,000</td><td>Counter corruption, fee drain</td></tr>
+        <tr><td>Low</td><td>$500</td><td>Informational findings</td></tr>
+      </tbody>
+    </table>
+    <p>Report: <strong>security@intentguard.dev</strong> &mdash; 48hr acknowledgment SLA. See <code>SECURITY.md</code> for full details.</p>
+  </main>
+
+</body>
+</html>
