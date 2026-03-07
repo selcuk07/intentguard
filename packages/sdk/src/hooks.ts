@@ -21,7 +21,7 @@ import { PublicKey, Connection } from '@solana/web3.js';
 import { computeIntentHash, findIntentCommitPda } from './index';
 
 export type IntentDetectionMode = 'websocket' | 'polling' | 'auto';
-export type IntentGuardState = 'idle' | 'waiting' | 'verified' | 'expired' | 'error';
+export type IntentGuardState = 'idle' | 'waiting' | 'manual_input' | 'verified' | 'expired' | 'error';
 
 export interface UseIntentGuardOptions {
   userPublicKey: PublicKey;
@@ -44,6 +44,10 @@ export interface UseIntentGuardResult {
   mode: 'websocket' | 'polling';
   start: () => void;
   reset: () => void;
+  /** Switch to manual hash entry mode (for CLI users without QR) */
+  showManualInput: () => void;
+  /** Submit a manually entered hash (hex string, 64 chars) */
+  submitManualHash: (hexHash: string) => boolean;
 }
 
 export function useIntentGuard({
@@ -183,6 +187,27 @@ export function useIntentGuard({
     startCountdown();
   }, [appId, action, params, ttl, mode, startWebSocket, startPolling, startCountdown, onError]);
 
+  const showManualInput = useCallback(() => {
+    setState('manual_input');
+  }, []);
+
+  const submitManualHash = useCallback((hexHash: string): boolean => {
+    const clean = hexHash.replace(/\s/g, '').toLowerCase();
+    if (!/^[0-9a-f]{64}$/.test(clean)) return false;
+
+    // Convert hex to number array and compare with expected hash
+    const submitted = Array.from(Buffer.from(clean, 'hex'));
+    const matches = submitted.length === intentHash.length &&
+      submitted.every((b, i) => b === intentHash[i]);
+
+    if (!matches) return false;
+
+    cleanup();
+    setState('verified');
+    onVerified(intentHash);
+    return true;
+  }, [intentHash, cleanup, onVerified]);
+
   const reset = useCallback(() => {
     cleanup();
     cleanedUpRef.current = false;
@@ -201,5 +226,7 @@ export function useIntentGuard({
     mode: activeMode,
     start,
     reset,
+    showManualInput,
+    submitManualHash,
   };
 }

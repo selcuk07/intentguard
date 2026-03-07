@@ -48,14 +48,14 @@
 - [x] QR payload: `{ protocol: 'intentguard', version, app, action, params, display }`
 - [x] Human-readable display (action + description)
 - [x] Anti-phishing: app registry with verified names + icons
-- [ ] Deep link support: `intentguard://commit?...`
+- [x] Deep link support: `intentguard://commit?payload=...` (app/src/utils/deeplink.ts)
 
 ### Frontend Widget
 - [x] `<IntentGuardButton />` React component
 - [x] States: idle → show QR → waiting for commit → verified → expired
 - [x] Polling for IntentCommit PDA detection
 - [x] WebSocket mode for faster detection
-- [ ] Fallback: manual hash entry for CLI users
+- [x] Fallback: manual hash entry for CLI users (SDK IntentGuardButton)
 
 ## Phase 3 — SDK + Publishing ✅ DONE
 
@@ -71,7 +71,7 @@
 - [x] `verify_intent_cpi()`, `commit_intent_cpi()`, `revoke_intent_cpi()`
 - [x] `pause_protocol_cpi()`, `unpause_protocol_cpi()`, `transfer_admin_cpi()`
 - [x] `find_intent_commit_pda()`, `find_config_pda()` helpers
-- [ ] Anchor constraint macro: `#[intent_guard(hash = ...)]`
+- [x] CPI macro: `intent_guard_verify!()` for inline verification (packages/cpi)
 
 ### Infrastructure
 - [x] GitHub public repo with MIT license

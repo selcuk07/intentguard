@@ -24,7 +24,7 @@
  *   - 'auto': Tries WebSocket first, falls back to polling if subscription fails
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { PublicKey, Connection } from '@solana/web3.js';
 import { useIntentGuard, IntentDetectionMode } from './hooks';
 
@@ -49,6 +49,8 @@ export interface IntentGuardButtonProps {
   pollInterval?: number;
   /** Detection mode: 'websocket' | 'polling' | 'auto' (default: 'auto') */
   mode?: IntentDetectionMode;
+  /** Show "enter hash manually" link for CLI users (default: true) */
+  allowManualHash?: boolean;
   /** Custom class name */
   className?: string;
 }
@@ -64,8 +66,12 @@ export function IntentGuardButton({
   ttl = 300,
   pollInterval = 2000,
   mode = 'auto',
+  allowManualHash = true,
   className,
 }: IntentGuardButtonProps) {
+  const [manualValue, setManualValue] = useState('');
+  const [manualError, setManualError] = useState('');
+
   const {
     state,
     qrData,
@@ -73,6 +79,8 @@ export function IntentGuardButton({
     mode: activeMode,
     start,
     reset,
+    showManualInput,
+    submitManualHash,
   } = useIntentGuard({
     userPublicKey,
     appId,
@@ -151,12 +159,96 @@ export function IntentGuardButton({
         <div style={{ fontSize: '11px', color: '#475569', marginTop: '4px' }}>
           {activeMode === 'websocket' ? 'Live detection via WebSocket' : 'Polling every ' + (pollInterval / 1000) + 's'}
         </div>
-        <button
-          onClick={reset}
-          style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '13px', cursor: 'pointer', marginTop: '8px' }}
-        >
-          Cancel
-        </button>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '8px' }}>
+          {allowManualHash && (
+            <button
+              onClick={() => { setManualValue(''); setManualError(''); showManualInput(); }}
+              style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '13px', cursor: 'pointer' }}
+            >
+              Enter hash manually
+            </button>
+          )}
+          <button
+            onClick={reset}
+            style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '13px', cursor: 'pointer' }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (state === 'manual_input') {
+    return (
+      <div style={baseStyle} className={className}>
+        <div style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
+          Paste the intent hash from your CLI
+        </div>
+        <input
+          type="text"
+          value={manualValue}
+          onChange={(e) => { setManualValue(e.target.value); setManualError(''); }}
+          placeholder="64-character hex hash"
+          style={{
+            width: '100%',
+            padding: '10px 12px',
+            borderRadius: '8px',
+            border: manualError ? '1px solid #ef4444' : '1px solid #334155',
+            background: '#0f172a',
+            color: '#f1f5f9',
+            fontFamily: 'monospace',
+            fontSize: '12px',
+            boxSizing: 'border-box',
+          }}
+        />
+        {manualError && (
+          <div style={{ fontSize: '12px', color: '#ef4444', marginTop: '4px' }}>{manualError}</div>
+        )}
+        <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+          <button
+            onClick={() => {
+              const clean = manualValue.replace(/\s/g, '');
+              if (!/^[0-9a-fA-F]{64}$/.test(clean)) {
+                setManualError('Hash must be exactly 64 hex characters');
+                return;
+              }
+              if (!submitManualHash(clean)) {
+                setManualError('Hash does not match the expected intent');
+              }
+            }}
+            style={{
+              flex: 1,
+              background: '#10b981',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '10px',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Verify
+          </button>
+          <button
+            onClick={() => { setManualValue(''); setManualError(''); start(); }}
+            style={{
+              background: '#1e293b',
+              color: '#f1f5f9',
+              border: '1px solid #334155',
+              borderRadius: '8px',
+              padding: '10px 16px',
+              fontSize: '14px',
+              cursor: 'pointer',
+            }}
+          >
+            Back
+          </button>
+        </div>
+        <div style={{ fontSize: '11px', color: '#475569', marginTop: '8px' }}>
+          Run: intentguard commit --app ... then paste the hash here
+        </div>
       </div>
     );
   }

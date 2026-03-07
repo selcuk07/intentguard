@@ -273,6 +273,98 @@ pub fn unpause_protocol_cpi(accounts: AdminAccounts) -> Result<()> {
     Ok(())
 }
 
+// ─── Convenience Macros ─────────────────────────────────────────────────
+
+/// Verify an intent inline with minimal boilerplate.
+///
+/// Usage inside an Anchor instruction handler:
+///
+/// ```rust,ignore
+/// use intentguard_cpi::intent_guard_verify;
+///
+/// pub fn my_protected_action(ctx: Context<MyAction>, intent_hash: [u8; 32]) -> Result<()> {
+///     intent_guard_verify!(
+///         ctx.accounts.intent_commit,
+///         ctx.accounts.intent_config,
+///         ctx.accounts.user,
+///         ctx.accounts.intent_guard_program,
+///         intent_hash
+///     );
+///     // Intent verified — proceed with your logic
+///     Ok(())
+/// }
+/// ```
+#[macro_export]
+macro_rules! intent_guard_verify {
+    ($intent_commit:expr, $config:expr, $user:expr, $program:expr, $hash:expr) => {
+        $crate::verify_intent_cpi(
+            $crate::VerifyIntentAccounts {
+                intent_commit: $intent_commit.to_account_info(),
+                config: $config.to_account_info(),
+                user: $user.to_account_info(),
+                intent_guard_program: $program.to_account_info(),
+            },
+            $hash,
+        )?
+    };
+}
+
+/// Generate IntentGuard account fields for an Anchor `#[derive(Accounts)]` struct.
+///
+/// This generates the three required unchecked accounts plus the program account
+/// that IntentGuard CPI needs. Add this macro's output to your Accounts struct.
+///
+/// Usage:
+///
+/// ```rust,ignore
+/// use intentguard_cpi::{intent_guard_accounts, INTENT_GUARD_PROGRAM_ID};
+///
+/// #[derive(Accounts)]
+/// pub struct MyProtectedAction<'info> {
+///     #[account(mut)]
+///     pub user: Signer<'info>,
+///
+///     // Your other accounts...
+///
+///     intent_guard_accounts!();
+/// }
+/// ```
+///
+/// Since Rust macros cannot expand inside derive structs directly, use the
+/// helper function pattern instead:
+///
+/// ```rust,ignore
+/// #[derive(Accounts)]
+/// pub struct MyAction<'info> {
+///     #[account(mut)]
+///     pub user: Signer<'info>,
+///
+///     /// IntentCommit PDA: [b"intent", user, app_id]
+///     /// CHECK: Validated by IntentGuard program via CPI
+///     #[account(mut)]
+///     pub intent_commit: UncheckedAccount<'info>,
+///
+///     /// GuardConfig PDA: [b"config"]
+///     /// CHECK: Validated by IntentGuard program via CPI
+///     #[account(mut)]
+///     pub intent_config: UncheckedAccount<'info>,
+///
+///     /// IntentGuard program
+///     /// CHECK: Verified by address constraint
+///     #[account(address = intentguard_cpi::INTENT_GUARD_PROGRAM_ID)]
+///     pub intent_guard_program: UncheckedAccount<'info>,
+/// }
+///
+/// // Then in your handler:
+/// intent_guard_verify!(
+///     ctx.accounts.intent_commit,
+///     ctx.accounts.intent_config,
+///     ctx.accounts.user,
+///     ctx.accounts.intent_guard_program,
+///     intent_hash
+/// );
+/// ```
+
 /// Transfer admin authority via CPI (admin only).
 ///
 /// # Arguments
