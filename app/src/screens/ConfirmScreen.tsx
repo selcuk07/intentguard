@@ -14,6 +14,7 @@ import {
 import { lookupApp, AppInfo } from '../utils/app-registry';
 import { registerIntentForNotifications } from '../utils/notifications';
 import { DEVNET_RPC, DEFAULT_TTL } from '../utils/constants';
+import { trackEvent } from '../utils/analytics';
 import { PublicKey } from '@solana/web3.js';
 
 interface Props {
@@ -94,6 +95,7 @@ export default function ConfirmScreen({ payload, onDone, onBack }: Props) {
       await connection.confirmTransaction(sig, 'confirmed');
 
       setTxSig(sig);
+      trackEvent('intent_confirmed');
       setStatus('success');
 
       // Register for push notifications on this intent (best-effort)
@@ -104,6 +106,7 @@ export default function ConfirmScreen({ payload, onDone, onBack }: Props) {
       );
     } catch (err: unknown) {
       setError((err as Error).message);
+      trackEvent('intent_failed');
       setStatus('error');
     }
   };

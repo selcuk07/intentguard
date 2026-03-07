@@ -12,6 +12,7 @@ import PairScreen from './src/screens/PairScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import { QrIntentPayload } from './src/utils/intentguard';
 import { parseDeepLink } from './src/utils/deeplink';
+import { trackEvent } from './src/utils/analytics';
 import { setupNotificationHandlers, registerForPushNotifications } from './src/utils/notifications';
 
 const TEST_PAYLOAD: QrIntentPayload = {
@@ -45,6 +46,7 @@ export default function App() {
     if (!url) return;
     const parsed = parseDeepLink(url);
     if (parsed) {
+      trackEvent('deeplink_opened');
       setPayload(parsed);
       setScreen('confirm');
     }
@@ -59,6 +61,7 @@ export default function App() {
       ? Promise.resolve(localStorage.getItem(ONBOARDED_KEY))
       : SecureStore.getItemAsync(ONBOARDED_KEY);
     getFlag.then((val) => {
+      trackEvent('app_open');
       setScreen(val === 'true' ? 'home' : 'onboarding');
     });
 
@@ -71,6 +74,7 @@ export default function App() {
   }, []);
 
   const completeOnboarding = async () => {
+    trackEvent('onboarding_complete');
     if (Platform.OS === 'web') {
       localStorage.setItem(ONBOARDED_KEY, 'true');
     } else {
@@ -82,6 +86,7 @@ export default function App() {
   if (screen === null) return null; // Loading
 
   const handleScanned = (p: QrIntentPayload) => {
+    trackEvent('qr_scanned');
     setPayload(p);
     setScreen('confirm');
   };

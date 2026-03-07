@@ -157,7 +157,7 @@
 - [ ] iOS App Store submission
 - [ ] Google Play Store submission
 - [x] Onboarding flow: 5-step tutorial on first launch (OnboardingScreen.tsx)
-- [ ] Analytics: anonymous usage metrics
+- [x] Analytics: anonymous usage metrics (app/src/utils/analytics.ts — local only, no PII)
 
 ## Phase 8 — Growth + Protocol Revenue (Week 17+)
 
