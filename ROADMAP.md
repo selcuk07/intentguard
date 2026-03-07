@@ -94,18 +94,18 @@
 - [x] Bypass list: trusted dApps that don't need 2FA
 
 ### Extension ↔ Mobile Pairing
-- [ ] One-time QR pairing (like WhatsApp Web)
-- [ ] Encrypted WebSocket channel for real-time communication
-- [ ] Device management: pair/unpair multiple devices
+- [x] One-time QR pairing (like WhatsApp Web)
+- [x] Encrypted WebSocket channel for real-time communication
+- [x] Device management: pair/unpair multiple devices
 
 ## Phase 5 — Partner Integrations (Week 8–10)
 
 ### Integrations
 - [x] ACELaunch: auction bid intent verification (IntentProof — live on devnet)
-- [ ] Jupiter: swap intent verification
-- [ ] Raydium: LP add/remove intent verification
-- [ ] Tensor/Magic Eden: NFT purchase intent verification
-- [ ] Marinade: stake/unstake intent verification
+- [x] Jupiter: swap intent verification (examples/jupiter-swap.ts)
+- [x] Raydium: LP add/remove intent verification (examples/raydium-lp.ts)
+- [x] Tensor/Magic Eden: NFT purchase intent verification (examples/tensor-nft.ts)
+- [x] Marinade: stake/unstake intent verification (examples/marinade-stake.ts)
 
 ### App Registry
 - [ ] On-chain registry of verified app names + metadata
